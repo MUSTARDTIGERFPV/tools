@@ -45,7 +45,7 @@
                         <option data-supported-chips="SX128X,LR1121" value="150Hz_2400">150Hz (2.4GHz)</option>
                     </optgroup>
                     <optgroup label="900MHz">
-                        <option data-supported-chips="LR1121" value="1000Hz_900">1000Hz (900MHz)</option>
+                        <option data-supported-chips="LR1121" value="1000Hz_900">K1000 (900MHz)</option>
                         <option data-supported-chips="SX127X,LR1121" value="200Hz_900">200Hz (900MHz)</option>
                         <option data-supported-chips="SX127X,LR1121" value="100Hz_900">100Hz (900MHz)</option>
                         <option data-supported-chips="SX127X" value="25Hz_900">25Hz (900MHz)</option>
@@ -116,6 +116,7 @@
         // Sensitivity values for different modulation and bandwidth settings from docs
         const sensitivityTable = {
             'subGHz': {
+                '1000Hz': -103, // Real world data, not from calculator
                 '200Hz': -112,
                 '100Hz Full': -112,
                 '100Hz': -117,
@@ -128,6 +129,7 @@
             '2.4GHz': {
                 'F1000': -104,
                 'F500': -104,
+                'DK500': -103, // ?
                 'D500': -104,
                 'D250': -104,
                 '500Hz': -105,
