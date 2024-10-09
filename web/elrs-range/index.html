@@ -21,27 +21,43 @@
         <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">ExpressLRS Range Calculator</h1>
         <div class="grid grid-cols-2 gap-4 mb-6">
             <div>
+                <label for="chip" class="block text-sm font-medium text-gray-700 mb-1">Transciever</label>
+                <select id="chip" class="w-full p-2 border rounded">
+                    <option value="SX128X">SX128X</option>
+                    <option value="SX127X">SX127X</option>
+                    <option value="LR1121">LR1121</option>
+                </select>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
                 <label for="rfmd" class="block text-sm font-medium text-gray-700 mb-1">Packet Rate</label>
                 <select id="rfmd" class="w-full p-2 border rounded">
                     <optgroup label="2.4GHz">
-                        <option value="F1000_2400">F1000</option>
-                        <option value="F500_2400">F500</option>
-                        <option value="D500_2400">D500</option>
-                        <option value="D250_2400">D250</option>
-                        <option value="500Hz_2400">500Hz</option>
-                        <option value="333Hz Full_2400">333Hz Full</option>
-                        <option selected="selected" value="250Hz_2400">250Hz</option>
-                        <option value="150Hz_2400">150Hz</option>
+                        <option data-supported-chips="SX128X" value="F1000_2400">F1000 (2.4GHz)</option>
+                        <option data-supported-chips="SX128X" value="F500_2400">F500 (2.4GHz)</option>
+                        <option data-supported-chips="LR1121" value="DK500_2400">DK500 (2.4GHz)</option>
+                        <option data-supported-chips="SX128X" value="D500_2400">D500 (2.4GHz)</option>
+                        <option data-supported-chips="SX128X" value="D250_2400">D250 (2.4GHz)</option>
+                        <option data-supported-chips="SX128X,LR1121" value="500Hz_2400">500Hz (2.4GHz)</option>
+                        <option data-supported-chips="SX128X,LR1121" value="333Hz Full_2400">333Hz Full (2.4GHz)</option>
+                        <option data-supported-chips="SX128X,LR1121" selected="selected" value="250Hz_2400">250Hz (2.4GHz)</option>
+                        <option data-supported-chips="SX128X,LR1121" value="150Hz_2400">150Hz (2.4GHz)</option>
                     </optgroup>
                     <optgroup label="900MHz">
-                        <option value="200Hz_900">200Hz</option>
-                        <option value="100Hz_900">100Hz</option>
-                        <option value="25Hz_900">25Hz</option>
-                        <option value="D50_900">D50</option>
+                        <option data-supported-chips="LR1121" value="1000Hz_900">1000Hz (900MHz)</option>
+                        <option data-supported-chips="SX127X,LR1121" value="200Hz_900">200Hz (900MHz)</option>
+                        <option data-supported-chips="SX127X,LR1121" value="100Hz_900">100Hz (900MHz)</option>
+                        <option data-supported-chips="SX127X" value="25Hz_900">25Hz (900MHz)</option>
+                        <option data-supported-chips="SX127X" value="D50_900">D50 (900MHz)</option>
                     </optgroup>
                     <optgroup label="Common">
-                        <option value="100Hz Full_common">100Hz Full</option>
-                        <option value="50Hz_common">50Hz</option>
+                        <option data-supported-chips="SX128X,SX127X,LR1121" value="100Hz Full_common">100Hz Full (900MHz/2.4GHz)</option>
+                        <option data-supported-chips="SX128X,SX127X,LR1121" value="50Hz_common">50Hz (900MHz/2.4GHz)</option>
+                    </optgroup>
+                    <optgroup label="GeminiX">
+                        <option data-supported-chips="LR1121" value="X150_gemx">150Hz (900MHz+2.4GHz)</option>
+                        <option data-supported-chips="LR1121" value="X100 Full_gemx">100Hz Full (900MHz+2.4GHz)</option>
                     </optgroup>
                 </select>
             </div>
@@ -105,7 +121,9 @@
                 '100Hz': -117,
                 '50Hz': -120,
                 '25Hz': -123,
-                'D50': -112
+                'D50': -112,
+                'X150': -115,
+                'X100 Full': -115
             },
             '2.4GHz': {
                 'F1000': -104,
@@ -117,7 +135,9 @@
                 '250Hz': -108,
                 '150Hz': -112,
                 '100Hz Full': -112,
-                '50Hz': -115
+                '50Hz': -115,
+                'X150': -117.6,
+                'X100 Full': -117.6
             }
         }
 
@@ -168,6 +188,30 @@
                 document.getElementById('range2400').textContent = range['2400'].toFixed(2) + ' km';
             }
         }
+        function updateRfmdOptions() {
+            const rfmd = document.getElementById('rfmd');
+            const chip = document.getElementById('chip').value;
+            const options = rfmd.querySelectorAll('option');
+            options.forEach(option => {
+                const supportedChips = option.getAttribute('data-supported-chips').split(',');
+                if (supportedChips.includes(chip)) {
+                    option.disabled = false;
+                } else {
+                    option.disabled = true;
+                }
+            });
+            // Select default options as follows
+            const defaults = {
+                'SX128X': '250Hz_2400',
+                'SX127X': '200Hz_900',
+                'LR1121': '250Hz_2400'
+            };
+            if (defaults[chip]) {
+                rfmd.value = defaults[chip];
+            }
+        }
+        document.getElementById('chip').addEventListener('change', updateRfmdOptions);
+        updateRfmdOptions();
         // On change any input, update the ranges
         document.querySelectorAll('input, select').forEach(input => {
             input.addEventListener('change', updateRanges);
