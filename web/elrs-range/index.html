@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpressLRS Range Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">ExpressLRS Range Calculator</h1>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label for="rfmd" class="block text-sm font-medium text-gray-700 mb-1">Packet Rate</label>
+                <select id="rfmd" class="w-full p-2 border rounded">
+                    <optgroup label="2.4GHz">
+                        <option value="F1000_2400">F1000</option>
+                        <option value="F500_2400">F500</option>
+                        <option value="D500_2400">D500</option>
+                        <option value="D250_2400">D250</option>
+                        <option value="500Hz_2400">500Hz</option>
+                        <option value="333Hz Full_2400">333Hz Full</option>
+                        <option selected="selected" value="250Hz_2400">250Hz</option>
+                        <option value="150Hz_2400">150Hz</option>
+                    </optgroup>
+                    <optgroup label="900MHz">
+                        <option value="200Hz_900">200Hz</option>
+                        <option value="100Hz_900">100Hz</option>
+                        <option value="25Hz_900">25Hz</option>
+                        <option value="D50_900">D50</option>
+                    </optgroup>
+                    <optgroup label="Common">
+                        <option value="100Hz Full_common">100Hz Full</option>
+                        <option value="50Hz_common">50Hz</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div>
+                <label for="power" class="block text-sm font-medium text-gray-700 mb-1">Power Level</label>
+                <select id="power" class="w-full p-2 border rounded">
+                    <option value="10">10mW</option>
+                    <option value="25">25mW</option>
+                    <option value="50">50mW</option>
+                    <option selected="selected" value="100">100mW</option>
+                    <option value="250">250mW</option>
+                    <option value="500">500mW</option>
+                    <option value="1000">1000mW</option>
+                </select>
+            </div>
+            <div>
+                <label for="txGain" class="block text-sm font-medium text-gray-700 mb-1">TX Antenna Gain</label>
+                <select id="txGain" class="w-full p-2 border rounded">
+                    <option value="2.15">2.15dBi (Dipole)</option>
+                    <option value="5">5dBi (Moxon)</option>
+                </select>
+            </div>
+            <div>
+                <label for="rxGain" class="block text-sm font-medium text-gray-700 mb-1">RX Antenna Gain</label>
+                <select id="rxGain" class="w-full p-2 border rounded">
+                    <option value="2.15">2.15dBi (Dipole)</option>
+                    <option value="10.15">2.15dBi + 8dB (Dipole+LNA)</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-6">
+            <label for="margin" class="block text-sm font-medium text-gray-700 mb-1">Margin Adjustment (dB)</label>
+            <input type="number" id="margin" value="0" class="w-full p-2 border rounded" />
+        </div>
+        <!--<button id="calculate" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition duration-300">Calculate Range</button>-->
+        <div class="mt-6 grid grid-cols-2 gap-4">
+            <div id="range900Container" class="bg-green-100 p-4 rounded">
+                <h2 class="text-xl font-semibold mb-2 text-center">900MHz Range</h2>
+                <p id="range900" class="text-3xl font-bold text-center text-green-600">- km</p>
+            </div>
+            <div id="range2400Container" class="bg-blue-100 p-4 rounded">
+                <h2 class="text-xl font-semibold mb-2 text-center">2.4GHz Range</h2>
+                <p id="range2400" class="text-3xl font-bold text-center text-blue-600">- km</p>
+            </div>
+        </div>
+        <!-- disclaimer -->
+        <div class="mt-6 text-xs text-gray-600">
+            <p class="mb-2">This calculator uses the Friis transmission equation to calculate the maximum range of a radio link. It assumes free space propagation and does not take into account other factors such as interference, multi-path fading, or obstacles.</p>
+            <p class="mb-2">The sensitivity values are taken from the ExpressLRS documentation and are based on the modulation and bandwidth settings.</p>
+            <p class="mb-2">The margin adjustment allows you to add a safety margin to the calculated range to account for real-world conditions. We suggest using a margin of between -3dB and -10dB in your calculations to account for cross-polarization loss, turnarounds, shadowing, etc.</p>
+        </div>
+
+    </div>
+
+    <script>
+        // Sensitivity values for different modulation and bandwidth settings from docs
+        const sensitivityTable = {
+            'subGHz': {
+                '200Hz': -112,
+                '100Hz Full': -112,
+                '100Hz': -117,
+                '50Hz': -120,
+                '25Hz': -123,
+                'D50': -112
+            },
+            '2.4GHz': {
+                'F1000': -104,
+                'F500': -104,
+                'D500': -104,
+                'D250': -104,
+                '500Hz': -105,
+                '333Hz Full': -105,
+                '250Hz': -108,
+                '150Hz': -112,
+                '100Hz Full': -112,
+                '50Hz': -115
+            }
+        }
+
+        function calculateRange(frequency, txPower, txGain, rxGain, sensitivity, margin) {
+            frequency = frequency / 1e6; // Frequency in MHz
+            const pathLoss = (txPower + txGain + rxGain - sensitivity - 32.45 + margin) - (20 * Math.log10(frequency));
+            const range = Math.pow(10, pathLoss / 20);
+            
+            return range; // Range in kilometers
+        }
+
+
+        function updateRanges() {
+            const rfmd = document.getElementById('rfmd').value;
+            const power = parseFloat(document.getElementById('power').value);
+            const txGain = parseFloat(document.getElementById('txGain').value);
+            const rxGain = parseFloat(document.getElementById('rxGain').value);
+            const margin = parseFloat(document.getElementById('margin').value);
+
+            const txPower = 10 * Math.log10(power);
+            
+            const rfmdParts = rfmd.split('_');
+            const sensitivity = {
+                '900': sensitivityTable['subGHz'][rfmdParts[0]],
+                '2400': sensitivityTable['2.4GHz'][rfmdParts[0]]
+            }
+
+            const range = {
+                '900': 0,
+                '2400': 0
+            };
+
+            if (sensitivity['900']) {
+                range['900'] = calculateRange(900e6, txPower, txGain, rxGain, sensitivity['900'], margin);
+            }
+            if (sensitivity['2400']) {
+                range['2400'] = calculateRange(2.450e9, txPower, txGain, rxGain, sensitivity['2400'], margin);
+            }
+
+            if (rfmd.endsWith('_900')) {
+                document.getElementById('range900').textContent = range['900'].toFixed(2) + ' km';
+                document.getElementById('range2400').textContent = 'N/A';
+            } else if (rfmd.endsWith('_2400')) {
+                document.getElementById('range900').textContent = 'N/A';
+                document.getElementById('range2400').textContent = range['2400'].toFixed(2) + ' km';
+            } else {
+                document.getElementById('range900').textContent = range['900'].toFixed(2) + ' km';
+                document.getElementById('range2400').textContent = range['2400'].toFixed(2) + ' km';
+            }
+        }
+        // On change any input, update the ranges
+        document.querySelectorAll('input, select').forEach(input => {
+            input.addEventListener('change', updateRanges);
+        });
+        updateRanges();
+    </script>
+</body>
+</html>
