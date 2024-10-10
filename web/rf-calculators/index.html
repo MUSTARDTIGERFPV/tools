@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Calculate the range for your ExpressLRS setup based on various parameters.">
+    <meta name="description" content="Calculate various RF parameters such as power, path loss, range, and more.">
     <meta name="author" content="MUSTARDTIGER">
-    <meta name="keywords" content="ExpressLRS, Range, Calculator, Radio, Link, Friis, Transmission, Equation">
+    <meta name="keywords" content="rf, radio, frequency, power, path loss, range, calculator">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#ffffff">
-    <meta property="og:title" content="ExpressLRS Range Calculator">
-    <meta property="og:description" content="Calculate the range for your ExpressLRS setup based on various parameters.">
+    <meta property="og:title" content="RF Calculators">
+    <meta property="og:description" content="Calculate various RF parameters such as power, path loss, range, and more.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://tools.mustardtiger.com/elrs-range/">
+    <meta property="og:url" content="https://tools.mustardtiger.com/rf-calculators/">
 
-    <title>ExpressLRS Range Calculator</title>
+    <title>RF Calculators</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         input:checked ~ .dot {
@@ -43,25 +43,22 @@
                 <!-- Textbox input -->
                 <input 
                 type="number" 
-                class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-3/4" 
+                class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-5/6" 
                 value="20"
                 id="powerInput"
                 />
-            
+                <!-- Label before toggle -->
+                <span class="ml-4" id="powerUnitLabel">dBm</span>
                 <!-- Toggle switch container -->
                 <label class="flex items-center cursor-pointer">
-                <!-- Label before toggle -->
-                <span class="mr-2" id="unitLabel">dBm</span>
+
             
                 <!-- Toggle switch -->
                 <div class="relative">
-                    <input type="checkbox" id="unitToggle" class="sr-only" />
+                    <input type="checkbox" id="powerUnitToggle" class="sr-only" />
                     <div class="block bg-gray-300 w-12 h-6 rounded-full"></div>
                     <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform"></div>
                 </div>
-                
-                <!-- Label after toggle -->
-                <span class="ml-2">mW</span>
                 </label>
             </div>
             <div class="mt-auto grid grid-cols-1 gap-4">
@@ -170,6 +167,44 @@
                     <h2 class="text-xl font-semibold mb-2 text-center">Distance factor</h2>
                     <p id="inverseSquareOutput" class="text-3xl font-bold text-center text-blue-600">-</p>
                 </div>
+            </div>
+        </div>
+        <!-- Wavelength Card -->
+        <div class="flex flex-col bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">Wavelength</h1>
+            <p class="text-xs text-center text-gray-600 w-2/3 mx-auto">Calculate the wavelength of a given frequency or vice versa</p>
+            <hr class="my-6 border-gray-300 w-1/4 mx-auto">
+            <div class="flex items-center space-x-4 w-full mb-6">
+                <!-- Textbox input -->
+                <input 
+                type="number" 
+                class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-5/6" 
+                value="2450"
+                id="wavelengthInput"
+                />
+                <!-- Label before toggle -->
+                <span class="ml-4" id="wavelengthUnitLabel">MHz</span>
+                <!-- Toggle switch container -->
+                <label class="flex items-center cursor-pointer">
+
+            
+                <!-- Toggle switch -->
+                <div class="relative">
+                    <input type="checkbox" id="wavelengthUnitToggle" class="sr-only" />
+                    <div class="block bg-gray-300 w-12 h-6 rounded-full"></div>
+                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform"></div>
+                </div>
+                </label>
+            </div>
+            <div class="mt-auto grid grid-cols-2 gap-4">
+            <div class="bg-blue-100 p-4 rounded">
+                <h2 id="wavelengthOutput1Label" class="text-xl font-semibold mb-2 text-center">λ Wavelength (m)</h2>
+                <p id="wavelengthOutput1" class="text-3xl font-bold text-center text-blue-600">-</p>
+            </div>
+            <div class="bg-blue-100 p-4 rounded">
+                <h2 id="wavelengthOutput2Label" class="text-xl font-semibold mb-2 text-center">λ Wavelength (cm)</h2>
+                <p id="wavelengthOutput2" class="text-3xl font-bold text-center text-blue-600">-</p>
+            </div>
             </div>
         </div>
     </div>

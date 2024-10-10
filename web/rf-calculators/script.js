@@ -1,12 +1,12 @@
 // RF Power section
 function calculatePower() {
     const powerInput = document.getElementById('powerInput').value;
-    const unitToggle = document.getElementById('unitToggle');
-    const unitLabel = document.getElementById('unitLabel');
+    const powerpowerUnitToggle = document.getElementById('powerUnitToggle');
+    const powerUnitLabel = document.getElementById('powerUnitLabel');
     const powerOutputLabel = document.getElementById('powerOutputLabel');
     const powerOutput = document.getElementById('powerOutput');
 
-    if (unitToggle.checked) {
+    if (powerUnitToggle.checked) {
         // Convert mW to dBm
         const dBm = 10 * Math.log10(powerInput);
         powerOutputLabel.innerText = 'Power output (dBm)';
@@ -20,12 +20,14 @@ function calculatePower() {
 }
 
 // Update power data when switch toggles or when input power is set
-document.getElementById('unitToggle').addEventListener('change', function() {
+document.getElementById('powerUnitToggle').addEventListener('change', function() {
     // Swap the input and output values
-    const powerInput = document.getElementById('powerInput').innerText;
     const powerOutput = document.getElementById('powerOutput').innerText;
 
-    document.getElementById('powerInput').value = powerOutput;
+    powerInput.value = powerOutput;
+    // Set the power unit label
+    const powerUnitLabel = document.getElementById('powerUnitLabel');
+    powerUnitLabel.innerText = powerUnitToggle.checked ? 'mW' : 'dBm';
     calculatePower();
 });
 document.getElementById('powerInput').addEventListener('input', calculatePower);
@@ -87,3 +89,62 @@ function calculateInverseSquare() {
 
 document.getElementById('inverseSquareInput').addEventListener('input', calculateInverseSquare);
 document.addEventListener('DOMContentLoaded', calculateInverseSquare);
+
+// --------------------------------------------------------------------------------------------------------------------------------------
+
+function calculateWavelength() {
+    const input = parseFloat(document.getElementById('wavelengthInput').value);
+    const output1 = document.getElementById('wavelengthOutput1');
+    const output1Label = document.getElementById('wavelengthOutput1Label');
+    const output2 = document.getElementById('wavelengthOutput2');
+    const output2Label = document.getElementById('wavelengthOutput2Label');
+
+    const wavelengthUnitToggle = document.getElementById('wavelengthUnitToggle');
+    
+    const c = 299792458; // Speed of light in meters per second
+    const cM = c / 1e6; // Speed of light in mega meters per second
+
+    if (wavelengthUnitToggle.checked) {
+        // Convert from meters to MHz
+        const frequency = cM / input;
+
+        // Set labels
+        output1Label.innerText = 'Frequency (MHz)';
+        output2Label.innerText = 'Frequency (GHz)';
+
+        // Frequency in MHz
+        output1.innerText = frequency.toFixed(frequency % 1 === 0 ? 0 : 2);
+        // Frequency in GHz
+        output2.innerText = (frequency / 1000).toFixed((frequency / 1000) % 1 === 0 ? 0 : 2);
+    } else {
+        // Convert from MHz to meters
+        const wavelength = cM / input;
+
+        // Set labels
+        output1Label.innerText = 'Wavelength (m)';
+        output2Label.innerText = 'Wavelength (cm)';
+
+        // Wavelength in meters
+        output1.innerText = wavelength.toFixed(wavelength % 1 === 0 ? 0 : 2);
+        // Wavelength in cm
+        output2.innerText = (wavelength * 100).toFixed((wavelength * 100) % 1 === 0 ? 0 : 2);
+    }
+}
+
+document.getElementById('wavelengthUnitToggle').addEventListener('change', function() {
+    const wavelengthOutput1 = document.getElementById('wavelengthOutput1');
+    const wavelengthInput = document.getElementById('wavelengthInput');
+
+    // Swap the input and output values
+    wavelengthInput.value = wavelengthOutput1.innerText;
+
+    // Set the unit label
+    const wavelengthUnitLabel = document.getElementById('wavelengthUnitLabel');
+    wavelengthUnitLabel.innerText = wavelengthUnitToggle.checked ? 'm' : 'MHz';
+    
+    calculateWavelength();
+});
+
+document.getElementById('wavelengthInput').addEventListener('input', calculateWavelength);
+document.addEventListener('DOMContentLoaded', calculateWavelength);
+
