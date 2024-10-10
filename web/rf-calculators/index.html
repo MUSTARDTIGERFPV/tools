@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Calculate the range for your ExpressLRS setup based on various parameters.">
+    <meta name="author" content="MUSTARDTIGER">
+    <meta name="keywords" content="ExpressLRS, Range, Calculator, Radio, Link, Friis, Transmission, Equation">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:title" content="ExpressLRS Range Calculator">
+    <meta property="og:description" content="Calculate the range for your ExpressLRS setup based on various parameters.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tools.mustardtiger.com/elrs-range/">
+
+    <title>ExpressLRS Range Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input:checked ~ .dot {
+          transform: translateX(150%);
+          /*background-color: #4ade80;  Green for toggle on */
+        }
+        input:not(:checked) ~ .block {
+          background-color: #889cff; 
+        }
+        input:checked ~ .block {
+          background-color: #6781ff;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="w-full">
+        <div class="container mx-auto px-4 py-8 my-12">
+            <h1 class="text-4xl font-bold text-center text-gray-700">RF Calculators</h1>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-8 mx-8">
+        <!-- RF Power Card -->
+        <div class="flex flex-col bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">RF Power</h1>
+            <p class="text-xs text-center text-gray-600 w-2/3 mx-auto">Convert between logarithmic and linear power scales (mW and dBm)</p>
+            <hr class="my-6 border-gray-300 w-1/4 mx-auto">
+            <div class="flex items-center space-x-4 w-full mb-6">
+                <!-- Textbox input -->
+                <input 
+                type="number" 
+                class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-3/4" 
+                value="20"
+                id="powerInput"
+                />
+            
+                <!-- Toggle switch container -->
+                <label class="flex items-center cursor-pointer">
+                <!-- Label before toggle -->
+                <span class="mr-2" id="unitLabel">dBm</span>
+            
+                <!-- Toggle switch -->
+                <div class="relative">
+                    <input type="checkbox" id="unitToggle" class="sr-only" />
+                    <div class="block bg-gray-300 w-12 h-6 rounded-full"></div>
+                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform"></div>
+                </div>
+                
+                <!-- Label after toggle -->
+                <span class="ml-2">mW</span>
+                </label>
+            </div>
+            <div class="mt-auto grid grid-cols-1 gap-4">
+                <div class="bg-blue-100 p-4 rounded">
+                    <h2 id="powerOutputLabel" class="text-xl font-semibold mb-2 text-center">Power output</h2>
+                    <p id="powerOutput" class="text-3xl font-bold text-center text-blue-600">-</p>
+                </div>
+            </div>
+        </div>
+        <!-- Free Space Path Loss Card -->
+        <div class="flex flex-col bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">Free Space Path Loss</h1>
+            <p class="text-xs text-center text-gray-600 w-2/3 mx-auto">Determine the power loss at a given distance and frequency</p>
+            <hr class="my-6 border-gray-300 w-1/4 mx-auto">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <!-- Textbox input -->
+                <div>
+                    <label for="fsplFrequency" class="block text-sm font-medium text-gray-700 mb-1">Frequency (MHz)</label>
+                    <input 
+                    type="number" 
+                    class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" 
+                    value="2450"
+                    id="fsplFrequency"
+                    />
+                </div>
+                
+                <!-- Distance -->
+                <div>
+                    <label for="fsplDistance" class="block text-sm font-medium text-gray-700 mb-1">Distance (km)</label>
+                    <input
+                    type="number"
+                    class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                    value="10"
+                    id="fsplDistance"
+                    />
+                </div>
+            </div>
+            
+            <div class="mt-auto grid grid-cols-1 gap-4">
+                <div class="bg-blue-100 p-4 rounded">
+                    <h2 class="text-xl font-semibold mb-2 text-center">Path Loss (dB)</h2>
+                    <p id="fsplOutput" class="text-3xl font-bold text-center text-blue-600">-</p>
+                </div>
+            </div>
+        </div>
+        <!-- Range Estimator Card -->
+        <div class="flex flex-col bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">Range Estimator</h1>
+            <p class="text-xs text-center text-gray-600 w-2/3 mx-auto">Estimate the range based on various parameters</p>
+            <hr class="my-6 border-gray-300 w-1/4 mx-auto">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="rangeFrequency" class="block text-sm font-medium text-gray-700 mb-1">Frequency (MHz)</label>
+                    <input type="number" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" id="rangeFrequency" value="2450">
+                </div>
+                <div>
+                    <label for="rangeTXPower" class="block text-sm font-medium text-gray-700 mb-1">Tx Power (dBm)</label>
+                    <input type="number" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" id="rangeTXPower" value="20">
+                </div>
+                <div>
+                    <label for="rangeTXGain" class="block text-sm font-medium text-gray-700 mb-1">Tx Antenna Gain (dBi)</label>
+                    <input type="number" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" id="rangeTXGain" value="2.15">
+                </div>
+                <div>
+                    <label for="rangeRXGain" class="block text-sm font-medium text-gray-700 mb-1">Rx Antenna Gain (dBi)</label>
+                    <input type="number" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" id="rangeRXGain" value="2.15">
+                </div>
+                <div>
+                    <label for="rangeMargin" class="block text-sm font-medium text-gray-700 mb-1">Link Margin (dB)</label>
+                    <input type="number" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" id="rangeMargin" value="0">
+                </div>
+                <div>
+                    <label for="rangeSensitivity" class="block text-sm font-medium text-gray-700 mb-1">Rx Sensitivity (dBm)</label>
+                    <input type="number" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" id="rangeSensitivity" value="-108">
+                </div>
+            </div>
+            <div class="mt-auto grid grid-cols-2 gap-4">
+                <div class="bg-blue-100 p-4 rounded">
+                    <h2 class="text-xl font-semibold mb-2 text-center">Estimated Range (km)</h2>
+                    <p id="rangeOutputKM" class="text-3xl font-bold text-center text-blue-600">-</p>
+                </div>
+                <div class="bg-blue-100 p-4 rounded">
+                    <h2 class="text-xl font-semibold mb-2 text-center">Estimated Range (mi)</h2>
+                    <p id="rangeOutputMI" class="text-3xl font-bold text-center text-blue-600">-</p>
+                </div>
+            </div>
+        </div>
+        <!-- Inverse Square Law Card -->
+        <div class="flex flex-col bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">Inverse Square Law</h1>
+            <p class="text-xs text-center text-gray-600 w-2/3 mx-auto">Determine the additional range obtained by increasing power or gain</p>
+            <hr class="my-6 border-gray-300 w-1/4 mx-auto">
+            <div class="grid grid-cols-1 gap-4 mb-6">
+                <div>
+                    <label for="inverseSquareInput" class="block text-sm font-medium text-gray-700 mb-1">Gain/Power Increase (dB)</label>
+                    <input 
+                    type="number" 
+                    class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" 
+                    value="6"
+                    id="inverseSquareInput"
+                    />
+                </div>            
+            </div>
+            <div class="mt-auto grid grid-cols-1 gap-4">
+                <div class="bg-blue-100 p-4 rounded">
+                    <h2 class="text-xl font-semibold mb-2 text-center">Distance factor</h2>
+                    <p id="inverseSquareOutput" class="text-3xl font-bold text-center text-blue-600">-</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
