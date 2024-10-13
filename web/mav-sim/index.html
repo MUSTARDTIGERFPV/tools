@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAVLink Flight Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.95.0/Cesium.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.95.0/Widgets/widgets.min.css" rel="stylesheet">
+    <style>
+        #cesiumContainer {
+            width: 100%;
+            height: 80%;
+            /* position: absolute; */
+        }
+        /* hide cesium elements */
+        .cesium-viewer-animationContainer, .cesium-viewer-timelineContainer, .cesium-viewer-bottom, .cesium-viewer-fullscreenContainer, .cesium-viewer-toolbar {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <input type="checkbox" id="followClosest" checked>
+        <label for="followClosest">Follow closest</label>
+    </div>
+    <div id="cesiumContainer"></div>
+
+    <script>
+        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlZTk0MjE4My1kY2I0LTRkMDItYWUzMS0yMTkxYWFmZjM4ZTMiLCJpZCI6MjQ2NzM1LCJpYXQiOjE3Mjg0MjE0OTV9.8aaymL0Nj8raYsAwdL1xcB01b4KxLmmS4MWVR4hqUXQ';
+        
+        // Initialize Cesium viewer
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+            terrainProvider: Cesium.createWorldTerrain()
+        });
+
+        // Load Cesium_Air model
+        const airplaneUri = "models/Cesium_Air.glb";
+        airplaneEntity = viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(0, 0, 500),
+            model: { 
+                uri: airplaneUri, 
+                scale: 0.1,
+                silhouetteColor: Cesium.Color.BLUE,
+                silhouetteSize: 2
+            },
+        });
+
+        viewer.trackedEntity = airplaneEntity;
+        let lastUserInteraction = Date.now();
+        let lastCameraUpdate = Date.now();
+
+        // Set up camera to follow behind the plane
+        viewer.scene.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(0, 0, 0),
+            orientation: {
+                heading: Cesium.Math.toRadians(0),
+                pitch: Cesium.Math.toRadians(0),
+                roll: 0.0
+            }
+        });
+
+        // WebSocket connection
+        const socket = new WebSocket('ws://localhost:56781/websocket/server');
+        let lastMainPlaneUpdate = null;
+        let mainPlaneData = null;
+
+        socket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            if (!data.lat || !data.lng || !data.Location.Alt) {
+                return;
+            }
+            
+            // Check if the data hasn't changed
+            if (mainPlaneData && mainPlaneData.lat === parseFloat(data.lat) && mainPlaneData.lng === parseFloat(data.lng) && mainPlaneData.alt === parseFloat(data.Location.Alt)) {
+                return;
+            }
+
+            mainPlaneData = {
+                lat: parseFloat(data.lat),
+                lng: parseFloat(data.lng),
+                alt: parseFloat(data.Location.Alt),
+                yaw: parseFloat(data.yaw) - 90,
+                pitch: parseFloat(data.pitch),
+                roll: parseFloat(data.roll),
+                groundspeed: parseFloat(data.groundspeed),
+                verticalspeed: parseFloat(data.verticalspeed),
+                gx: parseFloat(data.gx),
+                gy: parseFloat(data.gy),
+                gz: parseFloat(data.gz),
+            };
+
+            lastMainPlaneUpdate = Date.now();
+            updateMainPlane();
+        };
+
+        function updateMainPlane() {
+            if (!mainPlaneData) return;
+
+            const now = Date.now();
+            const timeDiff = (now - lastMainPlaneUpdate) / 1000; // in seconds
+
+            // Calculate the delta to coordinates given groundspeed and heading
+            const latDelta = (mainPlaneData.groundspeed * Math.cos(Cesium.Math.toRadians(mainPlaneData.yaw + 90))) / 111320;
+            const lngDelta = (mainPlaneData.groundspeed * Math.sin(Cesium.Math.toRadians(mainPlaneData.yaw + 90))) / (111320 * Math.cos(Cesium.Math.toRadians(mainPlaneData.lat)));
+
+            const position = Cesium.Cartesian3.fromDegrees(
+                mainPlaneData.lng + lngDelta * timeDiff,
+                mainPlaneData.lat + latDelta * timeDiff,
+                mainPlaneData.alt + mainPlaneData.verticalspeed * timeDiff
+            );
+
+            // Calculate the yaw rate given gz, in degrees per minute
+            const yawRate = Cesium.Math.toRadians(mainPlaneData.gz / 20); // TODO: why is this smoother at 20 than at 60?
+            const orientation = Cesium.Transforms.headingPitchRollQuaternion(
+                position,
+                new Cesium.HeadingPitchRoll(
+                    Cesium.Math.toRadians(mainPlaneData.yaw) + yawRate * timeDiff,
+                    Cesium.Math.toRadians(mainPlaneData.pitch),
+                    Cesium.Math.toRadians(mainPlaneData.roll)
+                )
+            );
+
+            if (airplaneEntity && mainPlaneData) {
+                airplaneEntity.position = position;
+                airplaneEntity.orientation = orientation;
+                airplaneEntity.description = `Latitude: ${mainPlaneData.lat.toFixed(5)}<br>
+                                              Longitude: ${mainPlaneData.lng.toFixed(5)}<br>
+                                              Altitude: ${mainPlaneData.alt.toFixed(2)}<br>
+                                              Yaw: ${mainPlaneData.yaw.toFixed(2)}<br>
+                                              Pitch: ${mainPlaneData.pitch.toFixed(2)}<br>
+                                              Roll: ${mainPlaneData.roll.toFixed(2)}`;
+            }
+
+            // Update camera if enough time has passed since last user interaction
+            if (now - lastUserInteraction > 2000 && now - lastCameraUpdate > 100 && document.getElementById('followClosest').checked) {
+                updateCamera(position, orientation);
+            }
+        }
+
+        function updateCamera(position, orientation) {
+            // First, find the vector from the main plane to the closest tracked plane
+            let closestPlane = null;
+            let closestDistance = Number.MAX_VALUE;
+            for (const icao in trackedPlanes) {
+                const plane = trackedPlanes[icao];
+                if (!plane.entity.position) continue;
+                if (plane.data.Alt === 0) continue;
+                
+                const distance = Cesium.Cartesian3.distance(
+                    Cesium.Cartesian3.fromDegrees(mainPlaneData.lng, mainPlaneData.lat),
+                    Cesium.Cartesian3.fromDegrees(plane.data.Lng, plane.data.Lat)
+                );
+                const verticalDistance = Math.abs(plane.data.Alt - mainPlaneData.alt);
+                if (verticalDistance > 5000) continue;
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestPlane = plane;
+                }
+            }
+
+            // If there is a tracked plane close by, select it, do not track it.
+            if (closestPlane && closestDistance < 5000) {
+                console.log(`Selecting plane ${closestPlane.data.CallSign} at ${closestDistance.toFixed(2)}m`);
+                viewer.selectedEntity = closestPlane.entity;
+                // Calculate the heading from the main plane to the closest plane
+                const heading = Cesium.Math.toDegrees(Math.atan2(
+                    closestPlane.data.newData.lng - mainPlaneData.lng,
+                    closestPlane.data.newData.lat - mainPlaneData.lat
+                ));
+                const pitchAngle = Math.atan2(
+                    closestPlane.data.newData.alt - mainPlaneData.alt,
+                    closestDistance
+                );
+                const hpr = new Cesium.HeadingPitchRange(Cesium.Math.toRadians(heading), pitchAngle, 10);
+                viewer.camera.lookAtTransform(viewer.camera.transform, hpr);
+                return;
+            }
+            lastCameraUpdate = Date.now();
+
+        }
+
+        let trackedPlanes = {};
+
+        function updateADSBPlanes(positionLat, positionLng, radiusNmi = 10) {
+            const url = 'http://localhost:56781/adsb';
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    for (const icao in data) {
+                        const plane = data[icao];
+                        const lat = parseFloat(plane.Lat);
+                        const lng = parseFloat(plane.Lng);
+                        const alt = parseFloat(plane.Alt);
+
+                        if (lat === 0 || lng === 0) {
+                            continue;
+                        }
+
+                        const distanceMeters = Cesium.Cartesian3.distance(
+                            Cesium.Cartesian3.fromDegrees(positionLng, positionLat),
+                            Cesium.Cartesian3.fromDegrees(lng, lat)
+                        );
+
+                        if (distanceMeters > radiusNmi * 1852) {
+                            continue;
+                        }
+
+                        const position = Cesium.Cartesian3.fromDegrees(lng, lat, alt);
+
+                        if (!trackedPlanes[icao]) {
+                            trackedPlanes[icao] = {
+                                entity: viewer.entities.add({
+                                    position: position,
+                                    model: {
+                                        uri: airplaneUri, 
+                                        scale: 5,
+                                        silhouetteColor: Cesium.Color.RED,
+                                        silhouetteSize: 2
+                                    },
+                                }),
+                                lastUpdate: Date.now(),
+                                data: plane
+                            };
+                        } else {
+                            // Validate that the data has changed
+                            if (trackedPlanes[icao] && trackedPlanes[icao].data.Lat === lat && trackedPlanes[icao].data.Lng === lng && trackedPlanes[icao].data.Alt === alt) {
+                                continue;
+                            }
+                            trackedPlanes[icao].lastUpdate = Date.now();
+                            trackedPlanes[icao].data = plane;
+                        }
+
+                        updateADSBPlane(icao);
+                    }
+
+                    // Remove planes that are no longer in the list
+                    for (const icao in trackedPlanes) {
+                        if (!data[icao]) {
+                            viewer.entities.remove(trackedPlanes[icao].entity);
+                            delete trackedPlanes[icao];
+                        }
+                    }
+                });
+        }
+
+        function updateADSBPlane(icao) {
+            const plane = trackedPlanes[icao];
+            if (!plane) return;
+
+            const now = Date.now();
+            const timeDiff = (now - plane.lastUpdate) / 1000; // in seconds
+            const speedInMetersPerSecond = plane.data.Speed / 100; // Convert to m/s from cm/s
+            const verticalSpeedInMetersPerSecond = plane.data.VerticalSpeed / 100; // Convert to m/s from cm/s
+            const latDelta = (speedInMetersPerSecond * Math.cos(Cesium.Math.toRadians(plane.data.Heading))) / 111320;
+            const lngDelta = (speedInMetersPerSecond * Math.sin(Cesium.Math.toRadians(plane.data.Heading))) / (111320 * Math.cos(Cesium.Math.toRadians(mainPlaneData.lat)));
+            const newLat = plane.data.Lat + latDelta * timeDiff;
+            const newLng = plane.data.Lng + lngDelta * timeDiff;
+            const newAlt = plane.data.Alt + verticalSpeedInMetersPerSecond * timeDiff;
+
+            plane.data.newData = {
+                lat: newLat,
+                lng: newLng,
+                alt: newAlt
+            };
+
+            const position = Cesium.Cartesian3.fromDegrees(newLng, newLat, newAlt);
+
+            let heading = 0;
+            if (plane.data.Heading) {
+                heading = Cesium.Math.toRadians(plane.data.Heading - 90);
+            }
+            let pitch = 0;
+            if (plane.data.VerticalSpeed && plane.data.Speed) {
+                pitch = Cesium.Math.toRadians(plane.data.VerticalSpeed / plane.data.Speed);
+            }
+            // Validate heading & pitch
+            if (isNaN(heading) || isNaN(pitch)) {
+                console.log(`Invalid heading or pitch for plane ${icao}: ${heading}, ${pitch}, ${plane.data.Heading}, ${plane.data.VerticalSpeed}, ${plane.data.Speed}`);
+                return;
+            }
+
+            const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, new Cesium.HeadingPitchRoll(heading, pitch, 0));
+            const mainPlanePosition = Cesium.Cartesian3.fromDegrees(mainPlaneData.lng, mainPlaneData.lat, mainPlaneData.alt);
+            const trackedPlanePosition = Cesium.Cartesian3.fromDegrees(plane.data.Lng, plane.data.Lat, plane.data.Alt);
+            const distanceMeters = Cesium.Cartesian3.distance(
+                mainPlanePosition,
+                trackedPlanePosition
+            );
+            const verticalDistance = plane.data.Alt - mainPlaneData.alt;
+            const aboveBelow = verticalDistance > 0 ? '⬆' : '⬇';
+            
+            // Returns single letter or two-letter cardinal direction from the main plane to the tracked plane (N, NE, E, SE, S, SW, W, NW)
+            function getCardinalDirection() {
+                // Use atan2 to get the angle between the two planes
+                let angle = Cesium.Math.toDegrees(Math.atan2(
+                    plane.data.Lng - mainPlaneData.lng,
+                    plane.data.Lat - mainPlaneData.lat
+                ));
+                if (angle < 0) angle += 360;
+
+                if (angle < 22.5) return 'N';
+                if (angle < 67.5) return 'NE';
+                if (angle < 112.5) return 'E';
+                if (angle < 157.5) return 'SE';
+                if (angle < 202.5) return 'S';
+                if (angle < 247.5) return 'SW';
+                if (angle < 292.5) return 'W';
+                if (angle < 337.5) return 'NW';
+                return 'N';
+            }
+
+            // Returns simple relative direction from the main plane to the tracked plane (left, right, ahead, behind)
+            function getRelativeDirection() {
+                let angle = Cesium.Math.toDegrees(Math.atan2(
+                    plane.data.Lng - mainPlaneData.lng,
+                    plane.data.Lat - mainPlaneData.lat
+                ));
+                if (angle < 0) angle += 360;
+
+                angle -= mainPlaneData.yaw;
+
+                angle += 270;
+                angle %= 360;
+
+                if (angle < 90) return '⮝';
+                if (angle < 180) return '⮞';
+                if (angle < 270) return '⮟';
+                return '⮜';
+            }
+
+            function getText(plane) {
+                const name = plane.data.CallSign || plane.data.Tag;
+                const dir = getCardinalDirection();
+                const distString = `${distanceMeters.toFixed(0)}m ${dir} / ${getRelativeDirection()}`;
+
+                let result = '';
+                result += name + '\n';
+                result += distString + '\n';
+                result += Math.abs(verticalDistance).toFixed(0) + 'm' + aboveBelow + '\n';
+
+                return result;
+            }
+
+            // Label close planes
+            if (distanceMeters < 10000 && Math.abs(verticalDistance) < 5000 && plane.data.Alt != 0) {
+                plane.entity.label = {
+                    text: getText(plane),
+                    font: '22px sans-serif',
+                    fillColor: Cesium.Color.WHITE,
+                    outlineColor: Cesium.Color.BLACK,
+                    outlineWidth: 2,
+                    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                    pixelOffset: new Cesium.Cartesian2(0, -10),
+                };
+                plane.entity.silhouetteColor = Cesium.Color.RED;
+            } else {
+                plane.entity.label = undefined;
+                plane.entity.silhouetteColor = Cesium.Color.FORESTGREEN;
+            }
+
+            plane.entity.position = position;
+            plane.entity.orientation = orientation;
+            plane.entity.description = `Callsign: ${plane.data.CallSign}<br>
+                                        Latitude: ${plane.data.Lat.toFixed(5)}<br>
+                                        Longitude: ${plane.data.Lng.toFixed(5)}<br>
+                                        Altitude: ${plane.data.Alt.toFixed(2)}m<br>
+                                        Heading: ${plane.data.Heading.toFixed(2)}<br>
+                                        Speed: ${speedInMetersPerSecond.toFixed(2)}m/s<br>
+                                        Vertical Speed: ${verticalSpeedInMetersPerSecond.toFixed(2)}m/s<br>
+                                        Distance: ${distanceMeters.toFixed(2)}m<br>
+                                        Age: ${timeDiff.toFixed(2)}s`;
+        }
+
+        // Update positions every frame
+        viewer.scene.preUpdate.addEventListener(() => {
+            updateMainPlane();
+            for (const icao in trackedPlanes) {
+                updateADSBPlane(icao);
+            }
+        });
+
+        // Track user interaction
+        viewer.camera.moveStart.addEventListener(() => {
+            lastUserInteraction = Date.now();
+        });
+        document.getElementById('cesiumContainer').addEventListener('mousedown', () => {
+            lastUserInteraction = Date.now();
+        });
+        document.getElementById('cesiumContainer').addEventListener('click', () => {
+            lastUserInteraction = Date.now();
+        });
+        document.getElementById('cesiumContainer').addEventListener('mousedrag', () => {
+            lastUserInteraction = Date.now();
+        });
+
+        // Update ADS-B planes periodically
+        setInterval(() => {
+            if (mainPlaneData) {
+                updateADSBPlanes(mainPlaneData.lat, mainPlaneData.lng);
+            }
+        }, 1000);
+
+    </script>
+</body>
+
+</html>
