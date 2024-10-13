@@ -284,9 +284,10 @@
             const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, new Cesium.HeadingPitchRoll(heading, pitch, 0));
             const mainPlanePosition = Cesium.Cartesian3.fromDegrees(mainPlaneData.lng, mainPlaneData.lat, mainPlaneData.alt);
             const trackedPlanePosition = Cesium.Cartesian3.fromDegrees(plane.data.Lng, plane.data.Lat, plane.data.Alt);
+            // Calculate distance without z
             const distanceMeters = Cesium.Cartesian3.distance(
-                mainPlanePosition,
-                trackedPlanePosition
+                new Cesium.Cartesian3(mainPlanePosition.x, mainPlanePosition.y, 0),
+                new Cesium.Cartesian3(trackedPlanePosition.x, trackedPlanePosition.y, 0)
             );
             const verticalDistance = plane.data.Alt - mainPlaneData.alt;
             const aboveBelow = verticalDistance > 0 ? '⬆' : '⬇';
