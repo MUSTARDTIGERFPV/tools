@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTN Spreadsheet Mapper</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-4">TTN Spreadsheet Mapper</h1>
+        <div class="mb-4">
+            <input type="text" id="sheetUrl" placeholder="Enter Google Sheet URL" class="w-full p-2 border rounded">
+        </div>
+        <button id="submitBtn" type="button" class="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-indigo-500 hover:bg-indigo-400 disabled:bg-gray-500 transition ease-in-out duration-150 disabled:cursor-not-allowed" disabled="">
+            <svg id="loadThrobber" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" data-darkreader-inline-fill="" style="--darkreader-inline-fill: currentColor;"></path>
+            </svg>
+            <span id="submitBtnText">Loading...</span>
+        </button>
+        <div id="map" class="h-96 mt-4"></div>
+    </div>
+
+    <script>
+        let map;
+        let gatewayEUITable = {};
+        let gatewayIDTable = {};
+        let gatewayMarkers = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            fetchGateways();
+
+            document.getElementById('submitBtn').addEventListener('click', function(evt) {
+                const sheetUrl = document.getElementById('sheetUrl').value;
+                fetchSheetData(sheetUrl);
+            });
+        });
+
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        async function fetchGateways() {
+            document.getElementById('submitBtnText').innerText = 'Loading gateways...';
+            try {
+                const response = await fetch('https://mapper.packetbroker.net/api/v2/gateways?tenantId=ttn');
+                const data = await response.json();
+                gatewayEUITable = data.reduce((acc, gateway) => {
+                    if (gateway.eui) {
+                        acc[gateway.eui] = gateway;
+                    }
+                    return acc;
+                }, {});
+                gatewayIDTable = data.reduce((acc, gateway) => {
+                    if (gateway.id) {
+                        acc[gateway.id] = gateway;
+                    }
+                    return acc;
+                }, {});
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtnText').innerText = 'Submit';
+                document.getElementById('loadThrobber').style.display = 'none';
+            } catch (error) {
+                console.error('Error fetching gateways:', error);
+                document.getElementById('submitBtnText').innerText = 'Error fetching gateways';
+            }
+        }
+
+        function fetchSheetData(url) {
+            console.log('Fetching sheet data:', url);
+            // Extract the sheet ID from the URL
+            const sheetId = url.match(/[-\w]{25,}/);
+            if (!sheetId) {
+                console.error('Invalid sheet URL:', url);
+                return;
+            }
+            url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+            Papa.parse(url, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    plotData(results.data);
+                }
+            });
+        }
+
+        function plotData(data) {
+            console.log('Plotting data:', data);
+            data.forEach(row => {
+                if (row.latitude && row.longitude) {
+                    const marker = L.marker([row.latitude, row.longitude]).addTo(map);
+                    let distanceToGateway = 0;
+                    // Convert gateway ID to EUI - strip off eui- prefix and convert to uppercase
+                    const eui = row.gatewayId && row.gatewayId.replace(/^eui-/, '').toUpperCase();
+                    console.log(`Looking up gateway: ${row.gatewayId} -> ${eui}`);
+                    if (row.gatewayId) {
+                        const gatewayByEUI = gatewayEUITable[eui];
+                        const gatewayByID = gatewayIDTable[row.gatewayId];
+
+                        const gateway = gatewayByEUI || gatewayByID;
+
+                        if (!gateway) {
+                            console.error('Gateway not found:', row.gatewayId);
+                            return;
+                        }
+
+                        console.log('Creating line from', row.latitude, row.longitude, 'to', gateway);
+                        if (gateway.location && gateway.location.latitude && gateway.location.longitude) {
+                            if (!gatewayMarkers[gateway.id]) {
+                                const gatewayMarker = L.marker([gateway.location.latitude, gateway.location.longitude], {
+                                    icon: L.icon({
+                                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    })
+                                }).addTo(map);
+                                gatewayMarker.bindPopup(`<strong>Gateway ID:</strong> ${gateway.id}<br><strong>EUI:</strong> ${gateway.eui}`);
+                            }
+
+                            L.polyline([
+                                [row.latitude, row.longitude],
+                                [gateway.location.latitude, gateway.location.longitude]
+                            ], {color: 'red', weight: 2, opacity: 0.5}).addTo(map);
+                            distanceToGateway = L.latLng(row.latitude, row.longitude).distanceTo(L.latLng(gateway.location.latitude, gateway.location.longitude));
+                        } else {
+                            console.error('Gateway location not found:', gateway);
+                        }
+                    }
+                                        
+                    let popupContent = '';
+                    for (const [key, value] of Object.entries(row)) {
+                        popupContent += `<strong>${key}:</strong> ${value}<br>`;
+                    }
+                    if (distanceToGateway) {
+                        popupContent += `<strong>Distance to gateway:</strong> ${distanceToGateway.toFixed(2)}m<br>`;
+                    }
+                    marker.bindPopup(popupContent);
+                }
+            });
+
+            if (data.length > 0) {
+                // Fit bounds
+                const bounds = data.reduce((acc, row) => {
+                    if (row.latitude && row.longitude) {
+                        acc.push([row.latitude, row.longitude]);
+                    }
+                    return acc;
+                }, []);
+                map.fitBounds(bounds);
+            }
+        }
+    </script>
+</body>
+</html>
