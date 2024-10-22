@@ -208,7 +208,9 @@
                 'SX127X': '200Hz_900',
                 'LR1121': '250Hz_2400'
             };
-            if (defaults[chip]) {
+	    const currentSupportedChips = document.getElementById('rfmd').selectedOptions[0].getAttribute('data-supported-chips').split(',');
+	    // Only set to default if it's not supported
+            if (!currentSupportedChips.includes(chip) && defaults[chip]) {
                 rfmd.value = defaults[chip];
             }
         }
