@@ -148,3 +148,49 @@ document.getElementById('wavelengthUnitToggle').addEventListener('change', funct
 document.getElementById('wavelengthInput').addEventListener('input', calculateWavelength);
 document.addEventListener('DOMContentLoaded', calculateWavelength);
 
+// --------------------------------------------------------------------------------------------------------------------------------------
+
+function calculateRSSI() {
+    const frequency = parseFloat(document.getElementById('rssiFrequency').value); // In MHz
+    const txPower = parseFloat(document.getElementById('rssiTXPower').value); // In dBm
+    const txGain = parseFloat(document.getElementById('rssiTXGain').value); // In dBi
+    const rxGain = parseFloat(document.getElementById('rssiRXGain').value); // In dBi
+    const margin = parseFloat(document.getElementById('rssiMargin').value); // In dB
+    const rssiKM = parseFloat(document.getElementById('rssiInputKM').value); // Input distance in KM
+    const rssiOutput = document.getElementById('rssiOutput');
+
+    // Convert range from kilometers to a linear scale for calculation
+    const pathLoss = 20 * Math.log10(rssiKM) + 20 * Math.log10(frequency) + 32.45;
+    
+    // Calculate RSSI (sensitivity) based on the provided range
+    const sensitivity = txPower + txGain + rxGain + margin - pathLoss;
+
+    // Update the result
+    rssiOutput.innerText = sensitivity.toFixed(sensitivity % 1 === 0 ? 0 : 2);
+}
+
+document.getElementById('rssiFrequency').addEventListener('input', calculateRSSI);
+document.getElementById('rssiTXPower').addEventListener('input', calculateRSSI);
+document.getElementById('rssiTXGain').addEventListener('input', calculateRSSI);
+document.getElementById('rssiRXGain').addEventListener('input', calculateRSSI);
+document.getElementById('rssiMargin').addEventListener('input', calculateRSSI);
+document.getElementById('rssiInputKM').addEventListener('input', calculateRSSI);
+document.addEventListener('DOMContentLoaded', calculateRSSI);
+
+// --------------------------------------------------------------------------------------------------------------------------------------
+
+function calculateBeamwidth() {
+    const degToRad = function(degrees) {
+        return degrees * (Math.PI / 180);
+    }
+    const degrees = parseFloat(document.getElementById('beamwidthDegrees').value);
+    const distance = parseFloat(document.getElementById('beamwidthDistance').value);
+    const beamwidthOutput = document.getElementById('beamwidthOutput');
+
+    const width = 2 * distance * Math.tan(degToRad(degrees)/2);
+    beamwidthOutput.innerText = width.toFixed(2);
+}
+
+document.getElementById('beamwidthDegrees').addEventListener('input', calculateBeamwidth);
+document.getElementById('beamwidthDistance').addEventListener('input', calculateBeamwidth);
+document.addEventListener('DOMContentLoaded', calculateBeamwidth);
