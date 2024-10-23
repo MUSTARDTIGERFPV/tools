@@ -277,6 +277,42 @@
                 </div>
             </div>
         </div>
+        <!-- Power to Voltage Card -->
+        <div class="flex flex-col bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">RF Power to Voltage</h1>
+            <p class="text-xs text-center text-gray-600 w-2/3 mx-auto">Determine the voltage of a given power level in an RF system</p>
+            <hr class="my-6 border-gray-300 w-1/4 mx-auto">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="voltagePower" class="block text-sm font-medium text-gray-700 mb-1">Power (dBm)</label>
+                    <input 
+                    type="number" 
+                    class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" 
+                    value="20"
+                    id="voltagePower"
+                    />
+                </div>            
+                <div>
+                    <label for="voltageImpedance" class="block text-sm font-medium text-gray-700 mb-1">Characteristic Impedance (Ω)</label>
+                    <input 
+                    type="number" 
+                    class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" 
+                    value="50"
+                    id="voltageImpedance"
+                    />
+                </div>            
+            </div>
+            <div class="mt-auto grid grid-cols-2 gap-4">
+                <div class="bg-blue-100 p-4 rounded">
+                    <h2 class="text-xl font-semibold mb-2 text-center">Voltage (V<sub>RMS</sub>)</h2>
+                    <p id="voltageOutputmV" class="text-3xl font-bold text-center text-blue-600">-</p>
+                </div>
+                <div class="bg-blue-100 p-4 rounded">
+                    <h2 class="text-xl font-semibold mb-2 text-center">Voltage (V<sub>pp</sub>)</h2>
+                    <p id="voltageOutputmVpp" class="text-3xl font-bold text-center text-blue-600">-</p>
+                </div>
+            </div>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>

@@ -194,3 +194,33 @@ function calculateBeamwidth() {
 document.getElementById('beamwidthDegrees').addEventListener('input', calculateBeamwidth);
 document.getElementById('beamwidthDistance').addEventListener('input', calculateBeamwidth);
 document.addEventListener('DOMContentLoaded', calculateBeamwidth);
+
+// --------------------------------------------------------------------------------------------------------------------------------------
+
+function calculateVoltage() {
+    const power = parseFloat(document.getElementById('voltagePower').value);
+    const imp = parseFloat(document.getElementById('voltageImpedance').value);
+    //const voltageOutputdBmV = document.getElementById('voltageOutputdBmV');
+    const voltageOutputmV = document.getElementById('voltageOutputmV');
+    const voltageOutputmVpp = document.getElementById('voltageOutputmVpp');
+
+    // Convert dBm to watts
+    const powerWatts = Math.pow(10, power / 10) / 1000;
+
+    // Calculate voltage in volts (V) using V = √(P * Z)
+    const voltageVolts = Math.sqrt(powerWatts * imp);
+
+    // Convert voltage to millivolts (mV)
+    const voltageMilliVolts = voltageVolts * 1000;
+
+    // Convert voltage to dBmV using the formula dBmV = 20 * log10(VmV)
+    //const voltageInDbmV = 20 * Math.log10(voltageMilliVolts);
+
+    //voltageOutputdBmV.innerText = voltageInDbmV.toFixed(2);
+    voltageOutputmV.innerText = (voltageMilliVolts / 1000).toFixed(2);
+    voltageOutputmVpp.innerText = (voltageMilliVolts / 1000 * 2 * Math.sqrt(2)).toFixed(2);
+}
+
+document.getElementById('voltagePower').addEventListener('input', calculateVoltage);
+document.getElementById('voltageImpedance').addEventListener('input', calculateVoltage);
+document.addEventListener('DOMContentLoaded', calculateVoltage);
