@@ -24,6 +24,8 @@
             <span id="submitBtnText">Loading...</span>
         </button>
         <div id="map" class="h-96 mt-4"></div>
+        <p class="mt-6 text-sm text-gray-600">This application is primarily intended to map TheThingsNetwork reception reports in a Google Sheet. However, it can be used with any sheet containing latitude and longitude columns.</p>
+        <p class="mt-6 text-sm text-gray-600">To use this app, enter the URL of a Google Sheet spreadsheet which has columns latitude, longitude, and optionally gatewayId. Each row will be converted into a marker on the map, where every column will be displayed as a line on the marker's description, and finally TheThingsNetwork gateway IDs will be mapped and added as points with lines from each reception report that they "own".</p>
     </div>
 
     <script>
