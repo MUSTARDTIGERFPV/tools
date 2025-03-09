@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Body Composition Tracker</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-center text-blue-800 mb-8">Body Composition Tracker</h1>
+    
+    <div class="grid md:grid-cols-2 gap-8">
+      <!-- Input Panel -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Your Metrics</h2>
+        
+        <div class="grid grid-cols-1 gap-4">
+          <!-- Units Switch -->
+          <div class="flex items-center mb-4">
+            <span class="mr-4 text-gray-700">Units:</span>
+            <div class="flex rounded-md shadow-sm" role="group">
+              <button id="btn-metric" class="px-4 py-2 text-sm font-medium rounded-l-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none">
+                Metric
+              </button>
+              <button id="btn-imperial" class="px-4 py-2 text-sm font-medium rounded-r-lg bg-gray-300 text-gray-700 hover:bg-gray-400 focus:outline-none">
+                Imperial
+              </button>
+            </div>
+          </div>
+          
+          <!-- Weight Input -->
+          <div class="flex flex-col">
+            <label for="current-weight" class="mb-1 text-gray-700">Current Weight:</label>
+            <div class="flex">
+              <input type="number" id="current-weight" class="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="80">
+              <span id="weight-unit" class="inline-flex items-center px-3 py-2 text-gray-500 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md">
+                kg
+              </span>
+            </div>
+          </div>
+          
+          <!-- Height Input (for BMI calculation) -->
+          <div class="flex flex-col">
+            <label for="height" class="mb-1 text-gray-700">Height:</label>
+            <div class="flex">
+              <input type="number" id="height" class="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="175">
+              <span id="height-unit" class="inline-flex items-center px-3 py-2 text-gray-500 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md">
+                cm
+              </span>
+            </div>
+          </div>
+          
+          <!-- Body Fat Percentage Input -->
+          <div class="flex flex-col">
+            <label for="body-fat" class="mb-1 text-gray-700">Current Body Fat %:</label>
+            <div class="flex">
+              <input type="number" id="body-fat" min="1" max="60" class="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="20">
+              <span class="inline-flex items-center px-3 py-2 text-gray-500 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md">
+                %
+              </span>
+            </div>
+          </div>
+          
+          <!-- Lean Mass (calculated & shown) -->
+          <div class="flex flex-col">
+            <label for="lean-mass" class="mb-1 text-gray-700">Lean Body Mass:</label>
+            <div class="flex">
+              <input type="number" id="lean-mass" class="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100" readonly>
+              <span id="mass-unit" class="inline-flex items-center px-3 py-2 text-gray-500 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md">
+                kg
+              </span>
+            </div>
+          </div>
+          
+          <!-- Target Info (Simplified) -->
+          <div class="flex flex-col mt-4">
+            <label class="mb-1 text-gray-700">Weight at 5% Body Fat:</label>
+            <div class="flex">
+              <input type="number" id="target-weight" class="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100" readonly>
+              <span id="target-weight-unit" class="inline-flex items-center px-3 py-2 text-gray-500 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md">
+                kg
+              </span>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">Projection to 5% body fat (typical minimum healthy level)</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Stats and Results Panel -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Results & Projections</h2>
+        
+        <!-- Current Stats Overview -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="text-sm font-medium text-gray-500">Current BMI</h4>
+            <p id="current-bmi" class="text-2xl font-bold text-blue-800">26.1</p>
+            <p id="bmi-category" class="text-sm text-gray-600">Overweight</p>
+          </div>
+          
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="text-sm font-medium text-gray-500">Fat Mass</h4>
+            <p id="fat-mass" class="text-2xl font-bold text-blue-800">16.0 kg</p>
+            <p class="text-sm text-gray-600">To lose: <span id="fat-to-lose">-</span></p>
+          </div>
+          
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="text-sm font-medium text-gray-500">Target Weight</h4>
+            <p id="target-projection" class="text-2xl font-bold text-blue-800">70.0 kg</p>
+            <p class="text-sm text-gray-600">To lose: <span id="weight-to-lose">-</span></p>
+          </div>
+          
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="text-sm font-medium text-gray-500">Target BMI</h4>
+            <p id="target-bmi" class="text-2xl font-bold text-blue-800">22.9</p>
+            <p id="target-bmi-category" class="text-sm text-gray-600">Normal</p>
+          </div>
+        </div>
+        
+        <!-- Chart Container -->
+        <div class="mt-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Body Composition Projection</h3>
+          <div class="bg-gray-50 p-2 rounded-lg">
+            <canvas id="composition-chart" height="250"></canvas>
+          </div>
+          
+          <!-- Chart Legend -->
+          <div class="flex justify-center mt-4 gap-6">
+            <div class="flex items-center">
+              <span class="inline-block w-3 h-3 mr-1 bg-blue-500 rounded-full"></span>
+              <span class="text-sm text-gray-600">Body Fat %</span>
+            </div>
+            <div class="flex items-center">
+              <span class="inline-block w-3 h-3 mr-1 bg-green-500 rounded-full"></span>
+              <span class="text-sm text-gray-600">BMI</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Additional Information -->
+    <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-semibold mb-4 text-gray-800">Body Composition Reference</h2>
+      
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- BMI Categories -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-800 mb-3">BMI Categories</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="px-4 py-2 text-left text-gray-700">Category</th>
+                  <th class="px-4 py-2 text-left text-gray-700">BMI Range</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Underweight</td>
+                  <td class="px-4 py-2 text-gray-800">Below 18.5</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Normal weight</td>
+                  <td class="px-4 py-2 text-gray-800">18.5 - 24.9</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Overweight</td>
+                  <td class="px-4 py-2 text-gray-800">25 - 29.9</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Obesity (Class 1)</td>
+                  <td class="px-4 py-2 text-gray-800">30 - 34.9</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Obesity (Class 2)</td>
+                  <td class="px-4 py-2 text-gray-800">35 - 39.9</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Extreme Obesity</td>
+                  <td class="px-4 py-2 text-gray-800">40 or higher</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Body Fat Categories -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Body Fat % Categories</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="px-4 py-2 text-left text-gray-700">Category</th>
+                  <th class="px-4 py-2 text-left text-gray-700">Men</th>
+                  <th class="px-4 py-2 text-left text-gray-700">Women</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Essential Fat</td>
+                  <td class="px-4 py-2 text-gray-800">2-5%</td>
+                  <td class="px-4 py-2 text-gray-800">10-13%</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Athletes</td>
+                  <td class="px-4 py-2 text-gray-800">6-13%</td>
+                  <td class="px-4 py-2 text-gray-800">14-20%</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Fitness</td>
+                  <td class="px-4 py-2 text-gray-800">14-17%</td>
+                  <td class="px-4 py-2 text-gray-800">21-24%</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Average</td>
+                  <td class="px-4 py-2 text-gray-800">18-24%</td>
+                  <td class="px-4 py-2 text-gray-800">25-31%</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 text-gray-800">Obese</td>
+                  <td class="px-4 py-2 text-gray-800">25%+</td>
+                  <td class="px-4 py-2 text-gray-800">32%+</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Chart
+    let compositionChart;
+    
+    // State variables
+    let isMetric = true;
+    let currentWeight = 80; // kg
+    let height = 175; // cm
+    let bodyFatPercentage = 20; // %
+    const targetBodyFat = 5; // Fixed at 5%
+    let targetWeight; // Will be calculated
+    
+    // DOM Elements
+    const currentWeightInput = document.getElementById('current-weight');
+    const heightInput = document.getElementById('height');
+    const bodyFatInput = document.getElementById('body-fat');
+    const leanMassInput = document.getElementById('lean-mass');
+    const targetWeightInput = document.getElementById('target-weight');
+    
+    const currentBmiElement = document.getElementById('current-bmi');
+    const bmiCategoryElement = document.getElementById('bmi-category');
+    const targetBmiElement = document.getElementById('target-bmi');
+    const targetBmiCategoryElement = document.getElementById('target-bmi-category');
+    const fatMassElement = document.getElementById('fat-mass');
+    const fatToLoseElement = document.getElementById('fat-to-lose');
+    const weightToLoseElement = document.getElementById('weight-to-lose');
+    const targetProjectionElement = document.getElementById('target-projection');
+    
+    const btnMetric = document.getElementById('btn-metric');
+    const btnImperial = document.getElementById('btn-imperial');
+    const weightUnitSpan = document.getElementById('weight-unit');
+    const heightUnitSpan = document.getElementById('height-unit');
+    const massUnitSpan = document.getElementById('mass-unit');
+    const targetWeightUnitSpan = document.getElementById('target-weight-unit');
+    
+    // Initialize the chart
+    function initChart() {
+      const ctx = document.getElementById('composition-chart').getContext('2d');
+      
+      compositionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Body Fat %',
+              data: [],
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              borderColor: 'rgba(59, 130, 246, 1)',
+              borderWidth: 2,
+              tension: 0.1,
+              yAxisID: 'y'
+            },
+            {
+              label: 'BMI',
+              data: [],
+              backgroundColor: 'rgba(16, 185, 129, 0.2)',
+              borderColor: 'rgba(16, 185, 129, 1)',
+              borderWidth: 2,
+              tension: 0.1,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: isMetric ? 'Weight (kg)' : 'Weight (lbs)'
+              }
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Body Fat %'
+              },
+              min: 0,
+              suggestedMax: 40
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'BMI'
+              },
+              min: 15,
+              suggestedMax: 35,
+              grid: {
+                drawOnChartArea: false
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.parsed.y !== null) {
+                    label += context.parsed.y.toFixed(1);
+                    if (context.dataset.label === 'Body Fat %') {
+                      label += '%';
+                    }
+                  }
+                  return label;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Calculate BMI
+    function calculateBMI(weight, height) {
+      // BMI = weight(kg) / height(m)²
+      const heightInMeters = isMetric ? height / 100 : height * 0.0254;
+      const weightInKg = isMetric ? weight : weight * 0.453592;
+      return weightInKg / (heightInMeters * heightInMeters);
+    }
+    
+    // Get BMI category
+    function getBMICategory(bmi) {
+      if (bmi < 18.5) return 'Underweight';
+      if (bmi < 25) return 'Normal';
+      if (bmi < 30) return 'Overweight';
+      if (bmi < 35) return 'Obesity (Class 1)';
+      if (bmi < 40) return 'Obesity (Class 2)';
+      return 'Extreme Obesity';
+    }
+    
+    // Calculate fat mass
+    function calculateFatMass(weight, bodyFatPercentage) {
+      return weight * (bodyFatPercentage / 100);
+    }
+    
+    // Calculate lean mass
+    function calculateLeanMass(weight, bodyFatPercentage) {
+      return weight * (1 - bodyFatPercentage / 100);
+    }
+    
+    // Calculate body fat percentage at new weight
+    function calculateBodyFatAtWeight(currentWeight, currentBF, newWeight) {
+      const leanMass = calculateLeanMass(currentWeight, currentBF);
+      const newFatMass = newWeight - leanMass;
+      return (newFatMass / newWeight) * 100;
+    }
+    
+    // Create the projection data for the chart
+    function createProjectionData() {
+      let dataPoints = [];
+      let bmiPoints = [];
+      let labels = [];
+      const leanMass = calculateLeanMass(currentWeight, bodyFatPercentage);
+      
+      // Determine the range to display - from current weight down to 5% body fat
+      const lowestPossibleWeight = leanMass / 0.95; // Weight at 5% body fat
+      const startWeight = currentWeight; // Start from current weight
+      console.log(startWeight);
+      const endWeight = Math.max(lowestPossibleWeight, currentWeight * 0.6); // Don't go below 60% of current weight
+      const range = startWeight - endWeight;
+      const step = range / 10;
+      
+      // Calculate points - going from current weight (left) to lowest (right)
+      for (let i = 0; i <= 10; i++) {
+        const weight = startWeight - (step * i);
+        const weightDisplay = weight;//isMetric ? weight : weight * 2.20462;
+        
+        // Calculate BF% at this weight
+        const newBF = ((weight - leanMass) / weight) * 100;
+        if (newBF >= 5) { // Only add valid points, don't go below 5% BF
+          labels.push(weightDisplay.toFixed(1));
+          dataPoints.push(newBF.toFixed(1));
+          
+          // Calculate BMI for this weight
+          const bmi = calculateBMI(weight, height);
+          bmiPoints.push(bmi.toFixed(1));
+        }
+      }
+      
+      return {
+        labels,
+        dataPoints,
+        bmiPoints
+      };
+    }
+    
+    // Update the chart with new data
+    function updateChart() {
+      const projectionData = createProjectionData();
+      
+      compositionChart.data.labels = projectionData.labels;
+      compositionChart.data.datasets[0].data = projectionData.dataPoints;
+      compositionChart.data.datasets[1].data = projectionData.bmiPoints;
+      
+      // Update x-axis title based on units
+      compositionChart.options.scales.x.title.text = isMetric ? 'Weight (kg)' : 'Weight (lbs)';
+      
+      compositionChart.update();
+    }
+    
+    // Update all calculated values and display
+    function updateCalculations() {
+      // Get values from inputs
+      currentWeight = parseFloat(currentWeightInput.value);
+      height = parseFloat(heightInput.value);
+      bodyFatPercentage = parseFloat(bodyFatInput.value);
+      
+      // Calculate lean mass and the weight at 5% body fat
+      const leanMassValue = calculateLeanMass(currentWeight, bodyFatPercentage);
+      targetWeight = leanMassValue / 0.95; // Weight where 95% is lean mass (5% body fat)
+      
+      // Set lean mass input value
+      leanMassInput.value = leanMassValue.toFixed(1);
+      
+      // Calculate and display current BMI
+      const currentBMI = calculateBMI(currentWeight, height);
+      currentBmiElement.textContent = currentBMI.toFixed(1);
+      bmiCategoryElement.textContent = getBMICategory(currentBMI);
+      
+      // Calculate and display target BMI
+      const targetBMI = calculateBMI(targetWeight, height);
+      targetBmiElement.textContent = targetBMI.toFixed(1);
+      targetBmiCategoryElement.textContent = getBMICategory(targetBMI);
+      
+      // Calculate and display fat mass
+      const fatMass = calculateFatMass(currentWeight, bodyFatPercentage);
+      const weightUnit = isMetric ? 'kg' : 'lbs';
+      fatMassElement.textContent = `${fatMass.toFixed(1)} ${weightUnit}`;
+      
+      // Calculate fat to lose
+      const targetFatMass = calculateFatMass(targetWeight, targetBodyFat);
+      const fatToLose = fatMass - targetFatMass;
+      fatToLoseElement.textContent = `${fatToLose.toFixed(1)} ${weightUnit}`;
+      
+      // Calculate weight to lose
+      const weightToLose = currentWeight - targetWeight;
+      weightToLoseElement.textContent = `${weightToLose.toFixed(1)} ${weightUnit}`;
+      
+              // Update target projection and input
+      targetProjectionElement.textContent = `${targetWeight.toFixed(1)} ${weightUnit}`;
+      targetWeightInput.value = targetWeight.toFixed(1);
+      
+      // Update chart
+      updateChart();
+    }
+    
+    // Switch between metric and imperial units
+    function switchUnits(toMetric) {
+      if (toMetric === isMetric) return; // No change needed
+      
+      isMetric = toMetric;
+      
+      // Update UI to reflect current unit system
+      btnMetric.classList.toggle('bg-blue-600', isMetric);
+      btnMetric.classList.toggle('text-white', isMetric);
+      btnMetric.classList.toggle('bg-gray-300', !isMetric);
+      btnMetric.classList.toggle('text-gray-700', !isMetric);
+      
+      btnImperial.classList.toggle('bg-blue-600', !isMetric);
+      btnImperial.classList.toggle('text-white', !isMetric);
+      btnImperial.classList.toggle('bg-gray-300', isMetric);
+      btnImperial.classList.toggle('text-gray-700', isMetric);
+      
+      // Update unit labels
+      weightUnitSpan.textContent = isMetric ? 'kg' : 'lbs';
+      heightUnitSpan.textContent = isMetric ? 'cm' : 'in';
+      massUnitSpan.textContent = isMetric ? 'kg' : 'lbs';
+      targetWeightUnitSpan.textContent = isMetric ? 'kg' : 'lbs';
+      
+      // Convert values
+      if (isMetric) {
+        // Convert from imperial to metric
+        currentWeightInput.value = (parseFloat(currentWeightInput.value) * 0.453592).toFixed(1);
+        heightInput.value = (parseFloat(heightInput.value) * 2.54).toFixed(1);
+        targetWeightInput.value = (parseFloat(targetWeightInput.value) * 0.453592).toFixed(1);
+      } else {
+        // Convert from metric to imperial
+        currentWeightInput.value = (parseFloat(currentWeightInput.value) * 2.20462).toFixed(1);
+        heightInput.value = (parseFloat(heightInput.value) / 2.54).toFixed(1);
+      }
+      
+      updateCalculations();
+    }
+    
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      initChart();
+      updateCalculations();
+      
+      // Add event listeners to inputs
+      currentWeightInput.addEventListener('input', updateCalculations);
+      heightInput.addEventListener('input', updateCalculations);
+      bodyFatInput.addEventListener('input', updateCalculations);
+      
+      // Unit toggle buttons
+      btnMetric.addEventListener('click', () => switchUnits(true));
+      btnImperial.addEventListener('click', () => switchUnits(false));
+    });
+  </script>
+</body>
+</html>

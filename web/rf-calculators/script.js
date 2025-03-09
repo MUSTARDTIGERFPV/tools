@@ -22,9 +22,11 @@ function calculatePower() {
 // Update power data when switch toggles or when input power is set
 document.getElementById('powerUnitToggle').addEventListener('change', function() {
     // Swap the input and output values
-    const powerOutput = document.getElementById('powerOutput').innerText;
+    const powerInput = document.getElementById('powerInput');
+    const powerOutput = document.getElementById('powerOutput');
+    const powerUnitToggle = document.getElementById('powerUnitToggle');
 
-    powerInput.value = powerOutput;
+    powerInput.value = powerOutput.innerText;
     // Set the power unit label
     const powerUnitLabel = document.getElementById('powerUnitLabel');
     powerUnitLabel.innerText = powerUnitToggle.checked ? 'mW' : 'dBm';
@@ -224,3 +226,61 @@ function calculateVoltage() {
 document.getElementById('voltagePower').addEventListener('input', calculateVoltage);
 document.getElementById('voltageImpedance').addEventListener('input', calculateVoltage);
 document.addEventListener('DOMContentLoaded', calculateVoltage);
+
+/// --------------------------------------------------------------------------------------------------------------------------------------
+
+// RSSI Translation
+function calculateRSSITranslation() {
+    const rssiInput = document.getElementById('rssiTranslationInput').value;
+    const rssiUnitToggle = document.getElementById('rssiTranslationUnitToggle');
+    const rssiOutputLabel = document.getElementById('rssiTranslationOutputLabel');
+    const rssiOutput = document.getElementById('rssiTranslationOutput');
+
+    const MAX_DBM = -40;
+    const MIN_DBM = -130;
+
+    if (rssiUnitToggle.checked) {
+        // Convert dBm to Scaled
+        const scaled = ((rssiInput - MIN_DBM) * 100) / (MAX_DBM - MIN_DBM);
+        if (scaled < 0) {
+            scaled = 0;
+        }
+        if (scaled > 100) {
+            scaled = 100;
+        }
+        rssiOutputLabel.innerText = 'RSSI (Scaled)';
+        rssiOutput.innerText = Math.round(scaled);
+    } else {
+        // Convert Betaflight RSSI Scaled to dBm
+        const dBm = rssiInput * ((MAX_DBM - MIN_DBM) / 100) + MIN_DBM;
+        rssiOutputLabel.innerText = 'RSSI (dBm)';
+        rssiOutput.innerText = dBm.toFixed(dBm % 1 === 0 ? 0 : 2);
+    }
+}
+
+// Update power data when switch toggles or when input power is set
+document.getElementById('rssiTranslationUnitToggle').addEventListener('change', function() {
+    const MAX_DBM = -40;
+    const MIN_DBM = -130;
+    // Swap the input and output values
+    const rssiInput = document.getElementById('rssiTranslationInput');
+    const rssiOutput = document.getElementById('rssiTranslationOutput');
+    const rssiUnitToggle = document.getElementById('rssiTranslationUnitToggle');
+
+    rssiInput.value = rssiOutput.innerText;
+    // Set the power unit label
+    const rssiUnitLabel = document.getElementById('rssiTranslationUnitLabel');
+    rssiUnitLabel.innerText = rssiUnitToggle.checked ? 'dBm' : 'Scaled';
+    if (rssiUnitToggle.checked) {
+        // Value is in dBm, so set its min and max to the min and max dBm
+        rssiInput.min = MIN_DBM;
+        rssiInput.max = MAX_DBM;
+    } else {
+        // Value is in Scaled, so set its min and max to 0 and 100
+        rssiInput.min = 0;
+        rssiInput.max = 100
+    }
+    calculateRSSITranslation();
+});
+document.getElementById('rssiTranslationInput').addEventListener('input', calculateRSSITranslation);
+document.addEventListener('DOMContentLoaded', calculateRSSITranslation);
