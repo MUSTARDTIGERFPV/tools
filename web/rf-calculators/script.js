@@ -241,7 +241,7 @@ function calculateRSSITranslation() {
 
     if (rssiUnitToggle.checked) {
         // Convert dBm to Scaled
-        const scaled = ((rssiInput - MIN_DBM) * 100) / (MAX_DBM - MIN_DBM);
+        let scaled = ((rssiInput - MIN_DBM) * 100) / (MAX_DBM - MIN_DBM);
         if (scaled < 0) {
             scaled = 0;
         }
