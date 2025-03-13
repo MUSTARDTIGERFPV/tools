@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRSF Frame Parser</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    input::placeholder {
+      color: #9CA3AF;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">CRSF Frame Parser</h1>
+    
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">Input CRSF Frame</h2>
+      <div class="flex flex-col md:flex-row gap-4 mb-4">
+        <div class="flex-grow">
+          <input id="frameInput" type="text" placeholder="Example: EE-18-16-7E-EF-FD-7B-B0-30-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-60" 
+                 class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button id="parseButton" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition duration-200 flex-shrink-0">
+          Parse Frame
+        </button>
+      </div>
+      <div>
+        <div>
+          <button id="example1" class="text-blue-600 text-sm hover:underline">Load Example CRSF_FRAMETYPE_RC_CHANNELS_PACKED</button>
+        </div>
+        <div>
+          <button id="example2" class="text-blue-600 text-sm hover:underline">Load Example CRSF_FRAMETYPE_LINK_STATISTICS</button>
+        </div>
+        <div>
+          <button id="example3" class="text-blue-600 text-sm hover:underline">Load Example CRSF_FRAMETYPE_GPS</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="resultContainer" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">Parsed CRSF Frame</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-6">
+        <!-- Header Info -->
+        <div class="bg-gray-50 p-4 rounded-md col-span-3">
+          <h3 class="font-medium text-lg text-gray-800 mb-3">Frame Header</h3>
+          <div class="space-y-2">
+            <div class="flex">
+              <span class="font-medium w-32">Sync Byte:</span>
+              <span id="syncByte" class="font-mono"></span>
+            </div>
+            <div class="flex">
+              <span class="font-medium w-32">Length:</span>
+              <span id="lengthByte" class="font-mono"></span>
+            </div>
+            <div class="flex">
+              <span class="font-medium w-32">Frame Type:</span>
+              <span id="frameType" class="font-mono"></span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Payload Preview -->
+        <div class="bg-gray-50 p-4 rounded-md col-span-2">
+          <h3 class="font-medium text-lg text-gray-800 mb-3">Payload Bytes</h3>
+          <div id="payloadBytes" class="font-mono text-sm break-all"></div>
+        </div>
+        <!-- CRC -->
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h3 id="crc_label" class="font-medium text-lg text-gray-800 mb-3">CRC (observed)</h3>
+            <div id="crc" class="font-mono text-sm break-all"></div>
+            <h3 id="crc_calc_label" class="font-medium text-lg text-gray-800 mb-3">CRC (calculated)</h3>
+            <div id="crc_calc" class="font-mono text-sm break-all"></div>
+          </div>
+      </div>
+      
+      <!-- RC Channels Packed Frame (0x16) -->
+      <div id="rcChannelsSection" class="mt-6 bg-gray-50 p-4 rounded-md hidden">
+        <h3 class="font-medium text-lg text-gray-800 mb-3">RC Channels (Packed) Payload</h3>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th class="px-4 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Channel</th>
+                <th class="px-4 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PWM Value</th>
+                <th class="px-4 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raw Value</th>
+              </tr>
+            </thead>
+            <tbody id="rcChannelsTable" class="bg-white divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Link Statistics Frame (0x14) -->
+      <div id="linkStatsSection" class="mt-6 bg-gray-50 p-4 rounded-md hidden">
+        <h3 class="font-medium text-lg text-gray-800 mb-3">Link Statistics Payload</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 class="font-medium text-gray-700 mb-2">Uplink</h4>
+            <div class="space-y-2">
+              <div class="flex">
+                <span class="font-medium w-32">RSSI 1:</span>
+                <span id="uplinkRSSI1" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">RSSI 2:</span>
+                <span id="uplinkRSSI2" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">Link Quality:</span>
+                <span id="uplinkLQ" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">SNR:</span>
+                <span id="uplinkSNR" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">Active Antenna:</span>
+                <span id="activeAntenna" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">RF Mode:</span>
+                <span id="rfMode" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">TX Power:</span>
+                <span id="txPower" class="font-mono"></span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 class="font-medium text-gray-700 mb-2">Downlink</h4>
+            <div class="space-y-2">
+              <div class="flex">
+                <span class="font-medium w-32">RSSI 1:</span>
+                <span id="downlinkRSSI1" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">Link Quality:</span>
+                <span id="downlinkLQ" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">SNR:</span>
+                <span id="downlinkSNR" class="font-mono"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GPS Position Frame (0x02) -->
+      <div id="gpsSection" class="mt-6 bg-gray-50 p-4 rounded-md hidden">
+        <h3 class="font-medium text-lg text-gray-800 mb-3">GPS Position Payload</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div class="space-y-2">
+              <div class="flex">
+                <span class="font-medium w-32">Latitude:</span>
+                <span id="gpsLatitude" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">Longitude:</span>
+                <span id="gpsLongitude" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">Speed:</span>
+                <span id="gpsSpeed" class="font-mono"></span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="space-y-2">
+              <div class="flex">
+                <span class="font-medium w-32">Heading:</span>
+                <span id="gpsHeading" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">Altitude:</span>
+                <span id="gpsAltitude" class="font-mono"></span>
+              </div>
+              <div class="flex">
+                <span class="font-medium w-32">Satellites:</span>
+                <span id="gpsSatellites" class="font-mono"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Add a Google Maps link for the coordinates -->
+        <div class="mt-4">
+          <a id="gpsMapLink" href="#" target="_blank" class="text-blue-600 hover:underline">View on Google Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Frame type enum mapping
+    const CRSF_FRAME_TYPES = {
+      0x02: "CRSF_FRAMETYPE_GPS",
+      0x07: "CRSF_FRAMETYPE_VARIO",
+      0x08: "CRSF_FRAMETYPE_BATTERY_SENSOR",
+      0x09: "CRSF_FRAMETYPE_BARO_ALTITUDE",
+      0x14: "CRSF_FRAMETYPE_LINK_STATISTICS",
+      0x10: "CRSF_FRAMETYPE_OPENTX_SYNC",
+      0x3A: "CRSF_FRAMETYPE_RADIO_ID",
+      0x16: "CRSF_FRAMETYPE_RC_CHANNELS_PACKED",
+      0x1E: "CRSF_FRAMETYPE_ATTITUDE",
+      0x21: "CRSF_FRAMETYPE_FLIGHT_MODE",
+      0x28: "CRSF_FRAMETYPE_DEVICE_PING",
+      0x29: "CRSF_FRAMETYPE_DEVICE_INFO",
+      0x2B: "CRSF_FRAMETYPE_PARAMETER_SETTINGS_ENTRY",
+      0x2C: "CRSF_FRAMETYPE_PARAMETER_READ",
+      0x2D: "CRSF_FRAMETYPE_PARAMETER_WRITE",
+      0x32: "CRSF_FRAMETYPE_COMMAND",
+      0x78: "CRSF_FRAMETYPE_KISS_REQ",
+      0x79: "CRSF_FRAMETYPE_KISS_RESP",
+      0x7A: "CRSF_FRAMETYPE_MSP_REQ",
+      0x7B: "CRSF_FRAMETYPE_MSP_RESP",
+      0x7C: "CRSF_FRAMETYPE_MSP_WRITE",
+      0x80: "CRSF_FRAMETYPE_ARDUPILOT_RESP"
+    };
+
+    // DOM elements
+    const frameInput = document.getElementById('frameInput');
+    const parseButton = document.getElementById('parseButton');
+    const example1 = document.getElementById('example1');
+    const example2 = document.getElementById('example2');
+    const example3 = document.getElementById('example3');
+    const resultContainer = document.getElementById('resultContainer');
+    const rcChannelsSection = document.getElementById('rcChannelsSection');
+    const linkStatsSection = document.getElementById('linkStatsSection');
+    const gpsSection = document.getElementById('gpsSection');
+
+    // Set up example buttons
+    example1.addEventListener('click', () => {
+      frameInput.value = 'EE-18-16-E0-03-1F-F8-C0-07-3E-F0-81-0F-7C-E0-03-1F-F8-C0-07-3E-F0-81-0F-7C-AD';
+      parseFrame();
+    });
+    
+    example2.addEventListener('click', () => {
+      frameInput.value = 'C8-0C-14-30-40-64-09-01-07-0A-32-64-09-65';
+      parseFrame();
+    });
+
+    example3.addEventListener('click', () => {
+      // Example GPS frame: latitude 28.0805804N, longitude -82.4500989E, speed 88km/h, 
+      // heading 90°, altitude 100m, 8 satellites
+      frameInput.value = 'C8-11-02-1C-5C-24-24-B7-16-A8-E8-03-70-23-28-04-4C-08-E0';
+      parseFrame();
+    });
+
+    // Parse button click handler
+    parseButton.addEventListener('click', parseFrame);
+    frameInput.addEventListener('keyup', (e) => {
+      parseFrame();
+    });
+
+    
+    // Convert raw channel value to microseconds
+    function ticksToUs(ticks) {
+      return ((ticks - 992) * 5 / 8 + 1500);
+    }
+
+    function crc8_dvb_s2(data) {
+      const POLY = 0xD5;
+      let crc = 0x00;
+      
+      for (let byte of data) {
+          crc ^= byte;
+          for (let i = 0; i < 8; i++) {
+              if (crc & 0x80) {
+                  crc = ((crc << 1) ^ POLY) & 0xFF;
+              } else {
+                  crc = (crc << 1) & 0xFF;
+              }
+          }
+      }
+      return crc;
+    }
+
+    
+    // Parse frame input to byte array
+    function parseFrameInput(input) {
+      // Remove whitespace and handle different separators
+      const cleaned = input.replace(/\s+/g, '').replace(/[-,]/g, '');
+      
+      // Parse bytes
+      const bytes = [];
+      for (let i = 0; i < cleaned.length; i += 2) {
+        bytes.push(parseInt(cleaned.substring(i, i + 2), 16));
+      }
+      
+      return bytes;
+    }
+    
+    // Main parsing function
+    function parseFrame() {
+      try {
+        // Reset sections visibility
+        resultContainer.classList.remove('hidden');
+        rcChannelsSection.classList.add('hidden');
+        linkStatsSection.classList.add('hidden');
+        gpsSection.classList.add('hidden');
+        
+        // Parse input to byte array
+        const bytes = parseFrameInput(frameInput.value);
+        if (bytes.length < 3) {
+          return;
+        }
+        
+        // Parse header
+        const syncByte = bytes[0];
+        const lengthByte = bytes[1];
+        const frameType = bytes[2];
+        
+        // Verify length
+        const totalLength = lengthByte + 2; // Length byte counts payload + type, excluding sync and length
+        if (totalLength == bytes.length) {
+          document.getElementById('lengthByte').style.color = 'green';
+        } else {
+          document.getElementById('lengthByte').style.color = 'red';
+        }
+
+        // Update header display
+        document.getElementById('syncByte').textContent = `0x${syncByte.toString(16).toUpperCase().padStart(2, '0')}`;
+        document.getElementById('lengthByte').textContent = 
+          `0x${lengthByte.toString(16).toUpperCase().padStart(2, '0')} (${lengthByte} bytes)`;
+        
+        const frameTypeName = CRSF_FRAME_TYPES[frameType] || 'Unknown';
+        document.getElementById('frameType').textContent = 
+          `0x${frameType.toString(16).toUpperCase().padStart(2, '0')} (${frameTypeName})`;
+        
+        // Display payload bytes
+        const payload = bytes.slice(3, bytes.length - 1); // Exclude CRC
+        const payloadHex = payload.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+        document.getElementById('payloadBytes').textContent = payloadHex;
+
+        // Display CRC
+        const crc = bytes.slice(bytes.length - 1);
+        const crcHex = crc[0].toString(16).toUpperCase().padStart(2, '0');
+
+        const calculatedCRC = crc8_dvb_s2(bytes.slice(2, -1));
+        const calculatedCRCHex = calculatedCRC.toString(16).toUpperCase().padStart(2, '0');
+        document.getElementById('crc').textContent = `${crcHex}`;
+
+        if (calculatedCRC == crc) {
+          document.getElementById('crc').style.color = 'green';
+          document.getElementById('crc_calc').textContent = ``;
+          document.getElementById('crc_calc_label').classList.add('hidden');
+        } else {
+          document.getElementById('crc').style.color = 'red';
+          document.getElementById('crc_calc').textContent = `${calculatedCRCHex}`;
+          document.getElementById('crc_calc_label').classList.remove('hidden');
+        }
+        
+        // Process frame based on type
+        if (frameType === 0x16) { // RC_CHANNELS_PACKED
+          parseRCChannels(payload);
+        } else if (frameType === 0x14) { // LINK_STATISTICS
+          parseLinkStatistics(payload);
+        } else if (frameType === 0x02) { // GPS
+          parseGPSPosition(payload);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    // Parse RC channels packed payload (0x16)
+    function parseRCChannels(payload) {
+      rcChannelsSection.classList.remove('hidden');
+      const channelsTable = document.getElementById('rcChannelsTable');
+      channelsTable.innerHTML = '';
+      
+      // Convert to a single bit stream
+      let bitStream = [];
+      for (let i = 0; i < payload.length; i++) {
+        for (let bit = 0; bit < 8; bit++) {
+          bitStream.push((payload[i] >> bit) & 1);
+        }
+      }
+      
+      // Extract 11-bit channels
+      const channels = [];
+      for (let i = 0; i < 16; i++) { // 16 channels
+        let value = 0;
+        for (let bit = 0; bit < 11; bit++) {
+          const idx = i * 11 + bit;
+          if (idx < bitStream.length) {
+            value |= (bitStream[idx] << bit);
+          }
+        }
+        channels.push(value);
+      }
+      
+      // Create table rows
+      for (let i = 0; i < channels.length; i++) {
+        const row = document.createElement('tr');
+        
+        const channelCell = document.createElement('td');
+        channelCell.className = 'px-4 py-2';
+        channelCell.textContent = `Channel ${i + 1}`;
+        
+        const rawCell = document.createElement('td');
+        rawCell.className = 'px-4 py-2 font-mono text-gray-500';
+        rawCell.textContent = `${channels[i]}/0x${channels[i].toString(16).toUpperCase()}/0b${channels[i].toString(2)}`;
+        
+        const usCell = document.createElement('td');
+        usCell.className = 'px-4 py-2 font-mono';
+        usCell.textContent = `${ticksToUs(channels[i]).toFixed(0)} µs`;
+        
+        row.appendChild(channelCell);
+        row.appendChild(usCell);
+        row.appendChild(rawCell);
+
+        channelsTable.appendChild(row);
+      }
+    }
+    
+    // Parse link statistics payload (0x14)
+    function parseLinkStatistics(payload) {
+      linkStatsSection.classList.remove('hidden');
+      
+      // Uplink
+      document.getElementById('uplinkRSSI1').textContent = `-${payload[0]} dBm`;
+      document.getElementById('uplinkRSSI2').textContent = `-${payload[1]} dBm`;
+      document.getElementById('uplinkLQ').textContent = `${payload[2]}%`;
+      
+      // SNR is a signed value
+      const uplinkSNR = payload[3] < 128 ? payload[3] : payload[3] - 256;
+      document.getElementById('uplinkSNR').textContent = `${uplinkSNR} dB`;
+      
+      document.getElementById('activeAntenna').textContent = payload[4].toString();
+      document.getElementById('rfMode').textContent = payload[5].toString();
+      document.getElementById('txPower').textContent = `${payload[6]} mW`;
+      
+      // Downlink
+      document.getElementById('downlinkRSSI1').textContent = `-${payload[7]} dBm`;
+      document.getElementById('downlinkLQ').textContent = `${payload[8]}%`;
+      
+      // SNR is a signed value
+      const downlinkSNR = payload[9] < 128 ? payload[9] : payload[9] - 256;
+      document.getElementById('downlinkSNR').textContent = `${downlinkSNR} dB`;
+    }
+
+    // Parse GPS position payload (0x02)
+    function parseGPSPosition(payload) {
+      gpsSection.classList.remove('hidden');
+      
+      // Parse latitude (int32, big-endian, degrees * 1e7)
+      const latitude = (payload[0] << 24) | (payload[1] << 16) | (payload[2] << 8) | payload[3];
+      // Convert to signed value if needed
+      const latitudeSigned = latitude > 0x7FFFFFFF ? latitude - 0x100000000 : latitude;
+      const latitudeDeg = latitudeSigned / 10000000;
+      
+      // Parse longitude (int32, big-endian, degrees * 1e7)
+      const longitude = (payload[4] << 24) | (payload[5] << 16) | (payload[6] << 8) | payload[7];
+      // Convert to signed value if needed
+      const longitudeSigned = longitude > 0x7FFFFFFF ? longitude - 0x100000000 : longitude;
+      const longitudeDeg = longitudeSigned / 10000000;
+      
+      // Parse ground speed (int16, big-endian, km/h * 10)
+      const speedRaw = (payload[8] << 8) | payload[9];
+      const speed = speedRaw / 10; // in km/h
+      const speedMPH = speed * 0.6214;
+      
+      // Parse heading (int16, big-endian, degrees * 100)
+      const headingRaw = (payload[10] << 8) | payload[11];
+      const heading = headingRaw / 100; // in degrees
+      
+      // Parse altitude (uint16, big-endian, meters + 1000)
+      const altitudeRaw = (payload[12] << 8) | payload[13];
+      const altitude = altitudeRaw - 1000; // in meters
+      const altitudeFeet = altitude * 3.28;
+      
+      // Parse satellite count (uint8)
+      const satellites = payload[14];
+      
+      // Update display
+      document.getElementById('gpsLatitude').textContent = `${latitudeDeg.toFixed(7)}° (${latitudeSigned})`;
+      document.getElementById('gpsLongitude').textContent = `${longitudeDeg.toFixed(7)}° (${longitudeSigned})`;
+      document.getElementById('gpsSpeed').textContent = `${speed.toFixed(1)} km/h (${speedMPH.toFixed(1)} MPH)`;
+      document.getElementById('gpsHeading').textContent = `${heading.toFixed(2)}°`;
+      document.getElementById('gpsAltitude').textContent = `${altitude} m (${altitudeFeet.toFixed(1)} ft)`;
+      document.getElementById('gpsSatellites').textContent = satellites;
+      
+      // Update Google Maps link
+      const mapLink = document.getElementById('gpsMapLink');
+      mapLink.href = `https://www.google.com/maps?q=${latitudeDeg},${longitudeDeg}`;
+    }
+  </script>
+</body>
+</html>
