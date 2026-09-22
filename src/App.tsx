@@ -5,6 +5,7 @@ import {
   Dumbbell,
   FileSpreadsheet,
   Gauge,
+  Navigation,
   Radio,
   Route,
   SatelliteDish,
@@ -14,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CompensationPage } from "@/features/compensation/CompensationPage";
 import { CrsfPage } from "@/features/crsf/CrsfPage";
 import { FitnessPage } from "@/features/fitness/FitnessPage";
+import { GpsPage } from "@/features/gps/GpsPage";
 import { MavSimPage } from "@/features/mav/MavSimPage";
 import { elrsConfig, mlrsConfig, tbsConfig } from "@/features/range/range-data";
 import { RangePage } from "@/features/range/RangePage";
@@ -79,6 +81,13 @@ const tools = [
     category: "Time",
   },
   {
+    title: "GPS Speedometer",
+    description: "Live speed, heading, trip stats, and GNSS receiver diagnostics.",
+    href: "/gps-speedometer/",
+    icon: Navigation,
+    category: "Navigation",
+  },
+  {
     title: "Fitness Calculator",
     description: "Chart fitness progress and projections.",
     href: "/fitness/",
@@ -101,6 +110,7 @@ function route(path: string) {
   if (path.startsWith("/crsf")) return <CrsfPage />;
   if (path.startsWith("/compensation")) return <CompensationPage />;
   if (path.startsWith("/fitness")) return <FitnessPage />;
+  if (path.startsWith("/gps-speedometer")) return <GpsPage />;
   if (path.startsWith("/tech-calculators")) return <TechPage />;
   if (path.startsWith("/ttn-sheet")) return <TtnSheetPage />;
   if (path.startsWith("/mav-sim")) return <MavSimPage />;
