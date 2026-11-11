@@ -1,0 +1,21 @@
+{
+  "built": "2026-11-11",
+  "images": {
+    "loader": {
+      "file": "loader.bin",
+      "size": 36716,
+      "sha256": "a284ad03deed7474e50b9ee1371589d6679b13ff368cf5cab1474dd847de698c"
+    },
+    "edgetx": {
+      "file": "edgetx.bin",
+      "size": 509684,
+      "sha256": "2133e07cdf426dea616cb8119f598bd5bcd8a0faad3f8c07ed729d988071db5f"
+    },
+    "elrs": {
+      "file": "elrs.bin",
+      "size": 35328,
+      "sha256": "78d1d9df920d50d71b1c5850868100f589907381782ffe9129efee3357ac7712",
+      "version": "4.1.0-185-gf8700cab"
+    }
+  }
+}

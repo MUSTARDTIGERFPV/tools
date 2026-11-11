@@ -1,5 +1,6 @@
 import {
   Activity,
+  ArrowLeftRight,
   Calculator,
   Clock3,
   Cpu,
@@ -24,6 +25,7 @@ import { RangePage } from "@/features/range/RangePage";
 import { RfPage } from "@/features/rf/RfPage";
 import { TechPage } from "@/features/tech/TechPage";
 import { TtnSheetPage } from "@/features/ttn/TtnSheetPage";
+import { TwoToTangoPage } from "@/features/tango/TwoToTangoPage";
 
 const tools = [
   {
@@ -76,6 +78,13 @@ const tools = [
     category: "Radio",
   },
   {
+    title: "Two to Tango",
+    description: "Flash EdgeTX onto a TBS Tango 2 with Crossfire and ExpressLRS both resident, switchable per model.",
+    href: "/two-to-tango/",
+    icon: ArrowLeftRight,
+    category: "Radio",
+  },
+  {
     title: "TTN Spreadsheet Mapper",
     description: "Map TTN gateways from spreadsheet data.",
     href: "/ttn-sheet/",
@@ -118,6 +127,7 @@ function route(path: string) {
   if (path.startsWith("/tbs-range")) return <RangePage config={tbsConfig} />;
   if (path.startsWith("/crsf")) return <CrsfPage />;
   if (path.startsWith("/elrs-identify")) return <ElrsIdentifyPage />;
+  if (path.startsWith("/two-to-tango")) return <TwoToTangoPage />;
   if (path.startsWith("/compensation")) return <CompensationPage />;
   if (path.startsWith("/fitness")) return <FitnessPage />;
   if (path.startsWith("/gps-speedometer")) return <GpsPage />;
