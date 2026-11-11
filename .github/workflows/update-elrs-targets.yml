@@ -1,0 +1,35 @@
+name: Update ELRS targets
+
+# Refresh the targets.json snapshot used by /elrs-identify/ from
+# github.com/ExpressLRS/targets, and push it to main if anything changed.
+on:
+  schedule:
+    - cron: "17 9 * * 0" # Sundays, 09:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - run: node scripts/update-elrs-targets.mjs
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- public/elrs/targets.json; then
+            echo "No target changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/elrs/targets.json
+          git commit -m "Update ELRS targets snapshot"
+          git push

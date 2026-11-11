@@ -6,7 +6,7 @@
 // ref defaults to master of github.com/ExpressLRS/targets. Layouts are stored
 // once each and merged with a target's overlay in the browser, the same way
 // the ELRS build writes them into the firmware trailer.
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,6 +48,14 @@ for (const file of new Set(targets.map((t) => t.layout_file).filter(Boolean))) {
   } catch (error) {
     console.warn(`skipping ${file}: ${error.message}`);
   }
+}
+
+// Leave the file alone when only the timestamp would change, so the scheduled
+// workflow has nothing to commit.
+const previous = await readFile(out, "utf8").then(JSON.parse, () => null);
+if (previous && JSON.stringify([previous.targets, previous.layouts]) === JSON.stringify([targets, layouts])) {
+  console.log(`unchanged: ${targets.length} targets, ${Object.keys(layouts).length} layouts`);
+  process.exit(0);
 }
 
 await mkdir(path.dirname(out), { recursive: true });
