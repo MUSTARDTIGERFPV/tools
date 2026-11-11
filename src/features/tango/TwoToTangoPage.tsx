@@ -296,7 +296,10 @@ export function TwoToTangoPage() {
         >
           <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
             <li>Turn the radio fully off: unplug USB, and take the battery out or disconnect it.</li>
-            <li>Hold key E and plug in USB, as for a TBS bootloader update.</li>
+            <li>
+              Hold the E button (on the back, right side, under your middle finger) and plug in USB. Keep holding
+              until the computer plays its USB connect sound: it can take almost 10 seconds. Then let go.
+            </li>
             <li>Press Install and pick “TBS BOOTLOADER”. It takes about a minute.</li>
           </ol>
           <div className="flex flex-wrap items-center gap-4">
