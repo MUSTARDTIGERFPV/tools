@@ -2,6 +2,7 @@ import {
   Activity,
   Calculator,
   Clock3,
+  Cpu,
   Dumbbell,
   FileSpreadsheet,
   Gauge,
@@ -14,6 +15,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompensationPage } from "@/features/compensation/CompensationPage";
 import { CrsfPage } from "@/features/crsf/CrsfPage";
+import { ElrsIdentifyPage } from "@/features/elrs/ElrsIdentifyPage";
 import { FitnessPage } from "@/features/fitness/FitnessPage";
 import { GpsPage } from "@/features/gps/GpsPage";
 import { MavSimPage } from "@/features/mav/MavSimPage";
@@ -67,6 +69,13 @@ const tools = [
     category: "Protocol",
   },
   {
+    title: "ELRS Target Identifier",
+    description: "Plug in an ExpressLRS RX or TX over USB and find its chip, MAC, target, and pin map.",
+    href: "/elrs-identify/",
+    icon: Cpu,
+    category: "Radio",
+  },
+  {
     title: "TTN Spreadsheet Mapper",
     description: "Map TTN gateways from spreadsheet data.",
     href: "/ttn-sheet/",
@@ -108,6 +117,7 @@ function route(path: string) {
   if (path.startsWith("/mlrs-range")) return <RangePage config={mlrsConfig} />;
   if (path.startsWith("/tbs-range")) return <RangePage config={tbsConfig} />;
   if (path.startsWith("/crsf")) return <CrsfPage />;
+  if (path.startsWith("/elrs-identify")) return <ElrsIdentifyPage />;
   if (path.startsWith("/compensation")) return <CompensationPage />;
   if (path.startsWith("/fitness")) return <FitnessPage />;
   if (path.startsWith("/gps-speedometer")) return <GpsPage />;
