@@ -131,6 +131,14 @@ export class Loader {
     return new Loader(io);
   }
 
+  /** A 32-bit word from anywhere in the address space */
+  async peek(addr: number): Promise<number> {
+    const lines = await command(this.io, `X 0x${addr.toString(16)}`, 2000);
+    const m = lines.map((l) => /^[0-9a-f]{8}: ([0-9a-f]{8})/i.exec(l)).find(Boolean);
+    if (!m) throw new Error(`peek 0x${addr.toString(16)}: no value`);
+    return parseInt(m[1], 16) >>> 0;
+  }
+
   async erase(addr: number, len: number, log: (s: string) => void) {
     const n = Math.ceil(len / SECTOR) * SECTOR;
     const tbs = addr + n > 0x080c0000 ? " ERASE-TBS" : "";

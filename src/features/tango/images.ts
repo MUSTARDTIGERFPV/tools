@@ -2,21 +2,34 @@
 // (which we never host), the ExpressLRS image and its bind UID, and the CRCs
 // the radio's bootloader and loader check.
 
-// TBS lists 0x000141xx as "Crossfire Micro TX", but it is the build for the
-// Tango 2's board: it drives the SX1272's PA_BOOST pin. The 0x000140xx
-// "Tango II" 6.30 selects RFO, which isn't connected on these radios, so it
-// transmits nothing. EdgeTX recognises this exact build by its layout, so the
-// file must match byte for byte.
-export const CROSSFIRE = {
-  family: 0x0141,
-  version: 0x0630,
-  label: "Crossfire 6.48",
-  file: "0x000141xx_0x0630.bin",
-  url: "https://firmware.blacksheep.com.sg/firmware/0x000141xx_0x0630.bin",
-  catalog: "https://firmware.blacksheep.com.sg/json/catalog",
-  size: 135236,
-  sha256: "d32338c61afb90eac153bd945a84de06d980124c4d9e0861afa03b09e2fc4825",
-};
+// Tango 2s come with one of two Crossfire radio boards, and TBS publishes a
+// 6.30 build for each: 0x000140xx ("Crossfire Tango II") selects the SX1272's
+// RFO pin, 0x000141xx (listed as "Crossfire Micro TX") its PA_BOOST pin. The
+// wrong one transmits nothing. The TBS bootloader records which board a radio
+// has (BOARD_ID_ADDR), and EdgeTX recognises exactly these two files.
+export const CROSSFIRE_LABEL = "Crossfire 6.48";
+export const CROSSFIRE_VERSION = 0x0630;
+export const CROSSFIRE_CATALOG = "https://firmware.blacksheep.com.sg/json/catalog";
+export const BOARD_ID_ADDR = 0x08007f04;
+
+export type CrossfireBuild = { family: number; file: string; url: string; sha256: string; tbsName: string };
+export const CROSSFIRE_BUILDS: CrossfireBuild[] = [
+  {
+    family: 0x0141,
+    file: "0x000141xx_0x0630.bin",
+    url: "https://firmware.blacksheep.com.sg/firmware/0x000141xx_0x0630.bin",
+    sha256: "d32338c61afb90eac153bd945a84de06d980124c4d9e0861afa03b09e2fc4825",
+    tbsName: "Crossfire Micro TX",
+  },
+  {
+    family: 0x0140,
+    file: "0x000140xx_0x0630.bin",
+    url: "https://firmware.blacksheep.com.sg/firmware/0x000140xx_0x0630.bin",
+    sha256: "e37f7a9a849a8424e9e6d8dd4992e542655621af670b7ba62734da5a851961b5",
+    tbsName: "Crossfire Tango II",
+  },
+];
+export const familyName = (f: number) => `0x${f.toString(16).padStart(4, "0")}xx`;
 
 // Flash map (sectors 10-11 hold both radio images as one 256 KB slot)
 export const EDGETX_ADDR = 0x08020000;
@@ -89,22 +102,25 @@ export function tbsCrc32(data: Uint8Array): number {
   return (reflect(e, 32) ^ 0xffffffff) >>> 0;
 }
 
+export type Crossfire = { build: CrossfireBuild; image: Uint8Array };
+
 /** The Crossfire image from a TBS catalog file, ready to go at 0x080C0000 */
-export async function crossfireFromCatalog(file: Uint8Array): Promise<Uint8Array> {
+export async function crossfireFromCatalog(file: Uint8Array): Promise<Crossfire> {
   const len = (file[8] << 16) | (file[9] << 8) | file[10];
   if (file.length < 12 || file.length !== 12 + len) throw new Error("Not a TBS firmware file.");
   const family = (file[2] << 8) | file[3];
   const version = (file[5] << 8) | file[6];
-  if (family !== CROSSFIRE.family) {
+  const build = CROSSFIRE_BUILDS.find((b) => b.family === family);
+  if (!build) {
     throw new Error(
-      `That file is for TBS device 0x${family.toString(16).padStart(4, "0")}xx. ` +
-        `This radio needs ${CROSSFIRE.file} (0x000141xx, even though TBS calls it Micro TX).`,
+      `That file is for TBS device ${familyName(family)}, not a Tango 2 Crossfire board. ` +
+        `Use ${CROSSFIRE_BUILDS.map((b) => b.file).join(" or ")}.`,
     );
   }
-  if (version !== CROSSFIRE.version || (await sha256Hex(file)) !== CROSSFIRE.sha256) {
+  if (version !== CROSSFIRE_VERSION || (await sha256Hex(file)) !== build.sha256) {
     throw new Error(
       `That is Crossfire ${(version >> 8).toString(16)}.${(version & 0xff).toString(16).padStart(2, "0")}, ` +
-        `or a different build of it. This EdgeTX build hosts exactly ${CROSSFIRE.file}.`,
+        `or a different build of it. This EdgeTX build hosts exactly ${build.file}.`,
     );
   }
   const image = file.subarray(11, 11 + len);
@@ -115,7 +131,7 @@ export async function crossfireFromCatalog(file: Uint8Array): Promise<Uint8Array
   let used = image.length;
   while (used > 0 && image[used - 1] === 0xff) used--;
   if (used > CROSSFIRE_MAX) throw new Error("Crossfire image is larger than its space in flash.");
-  return image.slice(0, used);
+  return { build, image: image.slice(0, used) };
 }
 
 export function checkElrs(image: Uint8Array): { version: string } {

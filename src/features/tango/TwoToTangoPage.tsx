@@ -7,9 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
+  BOARD_ID_ADDR,
   checkElrs,
-  CROSSFIRE,
+  CROSSFIRE_BUILDS,
+  CROSSFIRE_LABEL,
   crossfireFromCatalog,
+  familyName,
+  type Crossfire,
   EDGETX_ADDR,
   EDGETX_MAX,
   ELRS_ADDR,
@@ -56,7 +60,7 @@ async function loadImages(): Promise<Images> {
 export function TwoToTangoPage() {
   const [images, setImages] = useState<Images | null>(null);
   const [imagesError, setImagesError] = useState<string | null>(null);
-  const [crossfire, setCrossfire] = useState<Uint8Array | null>(null);
+  const [crossfires, setCrossfires] = useState<Crossfire[]>([]);
   const [crossfireStatus, setCrossfireStatus] = useState<Status>({ kind: "idle" });
   const [skipCrossfire, setSkipCrossfire] = useState(false);
   const [phrase, setPhrase] = useState("");
@@ -79,11 +83,11 @@ export function TwoToTangoPage() {
 
   async function takeCrossfire(file: Uint8Array) {
     try {
-      const image = await crossfireFromCatalog(file);
-      setCrossfire(image);
-      setCrossfireStatus({ kind: "done", text: `${CROSSFIRE.file} verified: ${(image.length / 1024).toFixed(0)} KB image` });
+      const cf = await crossfireFromCatalog(file);
+      setCrossfires([cf]);
+      setCrossfireStatus({ kind: "done", text: `${cf.build.file} verified. It is checked against the radio's board in step 4.` });
     } catch (e) {
-      setCrossfire(null);
+      setCrossfires([]);
       setCrossfireStatus({ kind: "error", text: (e as Error).message });
     }
   }
@@ -91,20 +95,27 @@ export function TwoToTangoPage() {
   async function fetchCrossfire() {
     setCrossfireStatus({ kind: "busy", text: "Downloading from TBS…" });
     try {
-      const r = await fetch(CROSSFIRE.url);
-      if (!r.ok) throw new Error(`TBS's server answered HTTP ${r.status}`);
-      await takeCrossfire(new Uint8Array(await r.arrayBuffer()));
+      const got = await Promise.all(
+        CROSSFIRE_BUILDS.map(async (b) => {
+          const r = await fetch(b.url);
+          if (!r.ok) throw new Error(`TBS's server answered HTTP ${r.status} for ${b.file}`);
+          return crossfireFromCatalog(new Uint8Array(await r.arrayBuffer()));
+        }),
+      );
+      setCrossfires(got);
+      setCrossfireStatus({ kind: "done", text: "Both builds downloaded and verified. Step 4 uses the one that matches the radio." });
     } catch (e) {
+      setCrossfires([]);
       setCrossfireStatus({
         kind: "error",
-        text: `Couldn't fetch it from TBS (${(e as Error).message}). Download it with the link and choose the file instead.`,
+        text: `Couldn't fetch from TBS (${(e as Error).message}). Download the file for your radio with the links and choose it instead.`,
       });
     }
   }
 
   const trimmed = phrase.trim();
   const uid = trimmed ? uidFromPhrase(trimmed) : null;
-  const haveCrossfire = !!crossfire || skipCrossfire;
+  const haveCrossfire = crossfires.length > 0 || skipCrossfire;
 
   async function runStep1() {
     if (!images) return;
@@ -156,14 +167,40 @@ export function TwoToTangoPage() {
       const elrs = withUid(images.elrs, uid);
       const edgetx = padFF(images.edgetx, 4);
       if (edgetx.length > EDGETX_MAX) throw new Error("EdgeTX image too large");
-      const cf = crossfire && !skipCrossfire ? padFF(crossfire, 4) : null;
+
+      setStep2({ kind: "busy", text: "Reading the radio…" });
+      const loader = await Loader.open(port, say);
+      let cf: Uint8Array | null = null;
+      try {
+        if (!skipCrossfire) {
+          const board = (await loader.peek(BOARD_ID_ADDR)) >>> 8;
+          const build = CROSSFIRE_BUILDS.find((b) => b.family === board);
+          if (!build) {
+            throw new Error(
+              `The bootloader doesn't list a known Crossfire board (read 0x${board.toString(16)}xx). ` +
+                "Choose ExpressLRS only, or report this radio.",
+            );
+          }
+          say(`Crossfire board ${familyName(board)}: using ${build.file}`);
+          const match = crossfires.find((c) => c.build.family === board);
+          if (!match) {
+            throw new Error(
+              `This radio has the ${familyName(board)} Crossfire board, so it needs ${build.file}. ` +
+                "Fetch from TBS, or choose that file, and press Install again.",
+            );
+          }
+          cf = padFF(match.image, 4);
+        }
+      } catch (e) {
+        await loader.close().catch(() => {});
+        throw e;
+      }
       const total = edgetx.length + elrs.length + (cf?.length ?? 0);
       let base = 0;
       const progress = (n: number) => setProgress((base + n) / total);
 
       setStep2({ kind: "busy", text: "Writing…" });
       setProgress(0);
-      const loader = await Loader.open(port, say);
       try {
         say("Erasing EdgeTX and the radio images");
         await loader.erase(EDGETX_ADDR, edgetx.length, say);
@@ -220,15 +257,22 @@ export function TwoToTangoPage() {
 
         <StepCard
           n={1}
-          title={`Get ${CROSSFIRE.label} from TBS`}
+          title={`Get ${CROSSFIRE_LABEL} from TBS`}
           description={
             <>
-              This page doesn't host any TBS code. The Crossfire half comes straight from TBS: the file is{" "}
-              <a className="font-mono text-accent underline underline-offset-4" href={CROSSFIRE.url}>
-                {CROSSFIRE.file}
-              </a>{" "}
-              from their firmware server. TBS lists it as “Crossfire Micro TX”; it's the right build for the Tango 2's
-              radio board (the “Tango II” file drives a PA pin these radios don't use).
+              This page doesn't host any TBS code; the Crossfire half comes straight from TBS's firmware server. Tango
+              2s have one of two Crossfire radio boards, and TBS publishes a build for each:{" "}
+              {CROSSFIRE_BUILDS.map((b, i) => (
+                <span key={b.file}>
+                  {i ? " and " : ""}
+                  <a className="font-mono text-accent underline underline-offset-4" href={b.url}>
+                    {b.file}
+                  </a>{" "}
+                  (“{b.tbsName}”)
+                </span>
+              ))}
+              . The wrong one transmits nothing, so step 4 reads which board your radio has and uses the matching file.
+              Fetching gets both; if you download one yourself, the installer tells you if it's the wrong one.
             </>
           }
         >
