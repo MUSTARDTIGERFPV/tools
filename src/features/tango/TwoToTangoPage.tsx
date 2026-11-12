@@ -119,7 +119,7 @@ export function TwoToTangoPage() {
 
   async function runStep1() {
     if (!images) return;
-    setStep1({ kind: "busy", text: "Pick “TBS BOOTLOADER” in the browser's list" });
+    setStep1({ kind: "busy", text: "Pick the radio (TBS BOOTLOADER or TBS TANGO II) in the browser's list" });
     setLog([]);
     setProgress(0);
     try {
@@ -134,7 +134,7 @@ export function TwoToTangoPage() {
       // writes also clears whatever app was there and the loader stays put.
       const image = padFF(images.loader, 0x14000 + 6144);
       await flashViaBootloader(dev, image, { log: say, progress: setProgress });
-      setStep1({ kind: "done", text: "Loader installed. The radio restarts into it on its own; go on to step 2." });
+      setStep1({ kind: "done", text: "Loader installed. The radio restarts into it on its own; go on to step 4." });
     } catch (e) {
       setStep1({ kind: "error", text: (e as Error).message });
     } finally {
@@ -344,7 +344,7 @@ export function TwoToTangoPage() {
               Hold the E button (on the back, right side, under your middle finger) and plug in USB. Keep holding
               until the computer plays its USB connect sound: it can take almost 10 seconds. Then let go.
             </li>
-            <li>Press Install and pick “TBS BOOTLOADER”. It takes about a minute.</li>
+            <li>Press Install and pick the radio: it may be listed as “TBS BOOTLOADER” or “TBS TANGO II”. It takes about a minute.</li>
           </ol>
           <div className="flex flex-wrap items-center gap-4">
             <Button size="lg" onClick={runStep1} disabled={busy || !images || unsupported}>
