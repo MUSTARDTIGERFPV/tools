@@ -242,6 +242,20 @@ export function TwoToTangoPage() {
       note="EdgeTX for the TBS Tango 2 with both Crossfire and ExpressLRS resident in flash. Pick the link per model in Model Setup and the radio swaps between them on the fly."
     >
       <div className="grid gap-5 [&>*]:min-w-0">
+        <Card className="border-accent/60">
+          <CardContent className="p-6 text-sm leading-7">
+            <b>Heads up: this is very much beta.</b> It works on my bench radio, but it hasn't been on many other Tango
+            2s yet, so expect rough edges. The TBS bootloader is never touched, so holding E and plugging in USB always
+            gets you back to a place you can flash from. If something goes sideways, please{" "}
+            <a
+              className="text-accent underline underline-offset-4"
+              href="https://github.com/MUSTARDTIGERFPV/two-to-tango/issues"
+            >
+              open an issue
+            </a>{" "}
+            and tell me what happened.
+          </CardContent>
+        </Card>
         {unsupported ? (
           <Card>
             <CardContent className="p-6 text-sm text-destructive">
