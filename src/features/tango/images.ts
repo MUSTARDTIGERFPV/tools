@@ -3,9 +3,11 @@
 // the radio's bootloader and loader check.
 
 // Tango 2s come with one of two Crossfire radio boards, and TBS publishes a
-// 6.30 build for each: 0x000140xx ("Crossfire Tango II") selects the SX1272's
-// RFO pin, 0x000141xx (listed as "Crossfire Micro TX") its PA_BOOST pin. The
-// wrong one transmits nothing. The TBS bootloader records which board a radio
+// 6.30 build for each. TBS Agent's device table calls them
+// CROSSFIRE_TANGO2_TX_V1_V2 (0x14000) and CROSSFIRE_TANGO2_TX_V3_V9 (0x14100);
+// the firmware catalog mislabels the second "Crossfire Micro TX" (Micro TXes
+// are 0x131xx). 0x0140 selects the SX1272's RFO pin, 0x0141 its PA_BOOST pin,
+// and the wrong one transmits nothing. The TBS bootloader records which board a radio
 // has (BOARD_ID_ADDR), and EdgeTX recognises exactly these two files.
 export const CROSSFIRE_LABEL = "Crossfire 6.48";
 export const CROSSFIRE_VERSION = 0x0630;
@@ -19,14 +21,14 @@ export const CROSSFIRE_BUILDS: CrossfireBuild[] = [
     file: "0x000141xx_0x0630.bin",
     url: "https://firmware.blacksheep.com.sg/firmware/0x000141xx_0x0630.bin",
     sha256: "d32338c61afb90eac153bd945a84de06d980124c4d9e0861afa03b09e2fc4825",
-    tbsName: "Crossfire Micro TX",
+    tbsName: "Tango 2 board V3-V9; TBS's catalog calls it Micro TX",
   },
   {
     family: 0x0140,
     file: "0x000140xx_0x0630.bin",
     url: "https://firmware.blacksheep.com.sg/firmware/0x000140xx_0x0630.bin",
     sha256: "e37f7a9a849a8424e9e6d8dd4992e542655621af670b7ba62734da5a851961b5",
-    tbsName: "Crossfire Tango II",
+    tbsName: "Tango 2 board V1-V2",
   },
 ];
 export const familyName = (f: number) => `0x${f.toString(16).padStart(4, "0")}xx`;

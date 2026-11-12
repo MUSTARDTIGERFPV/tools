@@ -268,7 +268,7 @@ export function TwoToTangoPage() {
                   <a className="font-mono text-accent underline underline-offset-4" href={b.url}>
                     {b.file}
                   </a>{" "}
-                  (“{b.tbsName}”)
+                  ({b.tbsName})
                 </span>
               ))}
               . The wrong one transmits nothing, so step 4 reads which board your radio has and uses the matching file.
