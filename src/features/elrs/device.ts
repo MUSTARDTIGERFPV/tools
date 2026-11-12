@@ -275,12 +275,24 @@ export async function identifyDevice(opts: ReadOptions): Promise<DeviceReport> {
   // esptool-js and its chip stubs are big; only fetch them once someone connects.
   const { ESPLoader, Transport } = await import("esptool-js");
   const transport = new Transport(port, false);
-  const terminal: IEspLoaderTerminal = {
-    clean: () => {},
-    writeLine: (data) => opts.log(data),
-    write: (data) => opts.log(data),
+  // esptool-js only measures the crystal before the stub raises the CPU clock;
+  // asking again afterwards gets a wrong estimate, so keep its answer from the log.
+  let crystalMhz: number | null = null;
+  const onLine = (data: string) => {
+    const m = /Crystal is (\d+)MHz/.exec(data);
+    if (m) crystalMhz = Number(m[1]);
+    opts.log(data);
   };
-  const esp = new ESPLoader({ transport, baudrate: opts.baud, romBaudrate: 115200, terminal });
+  const terminal: IEspLoaderTerminal = { clean: () => {}, writeLine: onLine, write: onLine };
+  const esp = new ESPLoader({
+    transport,
+    baudrate: opts.baud,
+    romBaudrate: 115200,
+    terminal,
+    // Web Serial's default 255-byte buffer overruns behind a USB-UART bridge
+    // (CP210x, CH340) when the stub streams 4 KB flash packets at 460800+.
+    serialOptions: { bufferSize: 64 * 1024 },
+  });
 
   try {
     const description = await esp.main(opts.before);
@@ -288,12 +300,10 @@ export async function identifyDevice(opts: ReadOptions): Promise<DeviceReport> {
     const secureDownload = esp.secureDownloadMode;
 
     let features: string[] = [];
-    let crystalMhz: number | null = null;
     let revision: number | null = null;
     let mac = "";
     if (!secureDownload) {
       features = await rom.getChipFeatures(esp);
-      crystalMhz = await rom.getCrystalFreq(esp);
       revision = rom.getChipRevision ? await rom.getChipRevision(esp) : null;
       mac = await rom.readMac(esp);
     }
