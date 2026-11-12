@@ -1,5 +1,6 @@
 /// <reference types="w3c-web-serial" />
-import type { Before, IEspLoaderTerminal } from "esptool-js";
+import type { Before, ESPLoader, IEspLoaderTerminal } from "esptool-js";
+import { md5 } from "./md5";
 
 // UnifiedConfiguration.appendToFirmware writes this block right after the
 // application image: product name, lua name, options JSON, layout JSON.
@@ -258,6 +259,35 @@ function sizeBytes(size: string) {
   return Number(m[1]) * (m[2] === "MB" ? 1024 * 1024 : 1024);
 }
 
+const ESP_READ_FLASH = 0xd2;
+
+/**
+ * esptool-js's readFlash returns without reading the MD5 frame the stub sends
+ * last. Over Web Serial that frame often arrives after the next command has
+ * gone out, while the stub is still finishing the read, and the command is
+ * lost. Read and check the digest, as esptool.py does, before going on.
+ */
+async function readFlashChecked(esp: ESPLoader, addr: number, size: number) {
+  await esp.checkCommand("read flash", ESP_READ_FLASH, packU32(addr, size, 0x1000, 64));
+  let data = new Uint8Array(0);
+  while (data.length < size) {
+    const packet = await esp.transport.read(esp.FLASH_READ_TIMEOUT);
+    if (!packet.length) continue;
+    const next = new Uint8Array(data.length + packet.length);
+    next.set(data);
+    next.set(packet, data.length);
+    data = next;
+    await esp.transport.write(packU32(data.length));
+  }
+  if (data.length > size) throw new Error(`Read ${data.length} bytes at 0x${addr.toString(16)}, expected ${size}`);
+  const digest = await esp.transport.read(esp.FLASH_READ_TIMEOUT);
+  const expected = md5(data);
+  if (digest.length !== 16 || digest.some((b, i) => b !== expected[i])) {
+    throw new Error(`Flash read at 0x${addr.toString(16)} failed its MD5 check`);
+  }
+  return data;
+}
+
 function packU32(...values: number[]) {
   const out = new Uint8Array(values.length * 4);
   const view = new DataView(out.buffer);
@@ -340,7 +370,7 @@ export async function identifyDevice(opts: ReadOptions): Promise<DeviceReport> {
       secureDownload,
     };
 
-    const flash = await analyzeFlash((addr, size) => esp.readFlash(addr, size), rom.CHIP_NAME, opts);
+    const flash = await analyzeFlash((addr, size) => readFlashChecked(esp, addr, size), rom.CHIP_NAME, opts);
 
     if (opts.resetAfter) await esp.after("hard_reset");
 
