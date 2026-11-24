@@ -260,7 +260,7 @@ export const crsfToArduPilotUs = (c: number) => Math.trunc((c * 5) / 8) + 880;
 
 /** ArduPilot's flight-mode switch bands (RC_Channel::read_6pos_switch): 1..6, or 0 if invalid. */
 export function arduPilotMode(us: number) {
-  if (us <= 900 || us >= 2200) return 0;
+  if (us <= 800 || us >= 2200) return 0;
   if (us <= 1230) return 1;
   if (us <= 1360) return 2;
   if (us <= 1490) return 3;
@@ -269,19 +269,22 @@ export function arduPilotMode(us: number) {
   return 6;
 }
 
-const EDGES = [900, 1230.5, 1360.5, 1490.5, 1620.5, 1749.5, 2200];
+const EDGES = [800, 1230.5, 1360.5, 1490.5, 1620.5, 1749.5, 2200];
 const bandMargin = (us: number) => Math.min(...EDGES.map((e) => Math.abs(us - e)));
 
-const CRSF_MIN = 172;
-const CRSF_MAX = 1811;
+// ExpressLRS maps switch positions onto 1000..2000 us (CRSF 191..1792), not the
+// full 988..2012 us stick range.
+const CRSF_MIN = 191;
+const CRSF_MAX = 1792;
 const crsfToN = (v: number, cnt: number) =>
   v <= CRSF_MIN ? 0 : v >= CRSF_MAX ? cnt - 1 : Math.trunc(((v - CRSF_MIN) * cnt) / (CRSF_MAX - CRSF_MIN + 1));
 const nToCrsf = (n: number, max: number) => Math.trunc((n * (CRSF_MAX - CRSF_MIN)) / max) + CRSF_MIN;
 
 /**
  * What the flight controller sees for a CRSF value on CH12 under each ExpressLRS
- * switch mode: CH12 is the 16-position channel in Hybrid, 64 or 128 positions in
- * Wide, and 10-bit in the full-resolution modes.
+ * switch mode: CH12 is the 16-position channel in Hybrid, 128 positions in Wide
+ * (64 when telemetry is in every packet; ExpressLRS 4 uses 64 always), and 10-bit
+ * in the full-resolution modes.
  */
 export const LINK_PATHS: { name: string; via: (c: number) => number }[] = [
   { name: "Full resolution", via: (c) => (c >> 1) << 1 },
