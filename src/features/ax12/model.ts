@@ -282,14 +282,12 @@ const nToCrsf = (n: number, max: number) => Math.trunc((n * (CRSF_MAX - CRSF_MIN
 
 /**
  * What the flight controller sees for a CRSF value on CH12 under each ExpressLRS
- * switch mode: CH12 is the 16-position channel in Hybrid, 128 positions in Wide
- * (64 when telemetry is in every packet; ExpressLRS 4 uses 64 always), and 10-bit
- * in the full-resolution modes.
+ * switch mode: CH12 is the 16-position channel in Hybrid, 64 positions in Wide,
+ * and 10-bit in the full-resolution modes (including 16ch/2, which MAVLink forces).
  */
 export const LINK_PATHS: { name: string; via: (c: number) => number }[] = [
   { name: "Full resolution", via: (c) => (c >> 1) << 1 },
   { name: "Hybrid (16-pos)", via: (c) => nToCrsf(crsfToN(c, 16), 15) },
-  { name: "Wide (128-pos)", via: (c) => nToCrsf(crsfToN(c, 128), 127) },
   { name: "Wide (64-pos)", via: (c) => nToCrsf(crsfToN(c, 64), 63) },
 ];
 
