@@ -8,12 +8,14 @@ import {
   FileSpreadsheet,
   Gauge,
   Navigation,
+  Gamepad2,
   Radio,
   Route,
   SatelliteDish,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Ax12Page } from "@/features/ax12/Ax12Page";
 import { CompensationPage } from "@/features/compensation/CompensationPage";
 import { CrsfPage } from "@/features/crsf/CrsfPage";
 import { ElrsIdentifyPage } from "@/features/elrs/ElrsIdentifyPage";
@@ -85,6 +87,13 @@ const tools = [
     category: "Radio",
   },
   {
+    title: "AX12 Configurator",
+    description: "Live sticks, switches and channels for a Radiomaster AX12, model backup and restore, and a one-click ArduPilot 6POS setup.",
+    href: "/ax12/",
+    icon: Gamepad2,
+    category: "Radio",
+  },
+  {
     title: "TTN Spreadsheet Mapper",
     description: "Map TTN gateways from spreadsheet data.",
     href: "/ttn-sheet/",
@@ -128,6 +137,7 @@ function route(path: string) {
   if (path.startsWith("/crsf")) return <CrsfPage />;
   if (path.startsWith("/elrs-identify")) return <ElrsIdentifyPage />;
   if (path.startsWith("/two-to-tango")) return <TwoToTangoPage />;
+  if (path.startsWith("/ax12")) return <Ax12Page />;
   if (path.startsWith("/compensation")) return <CompensationPage />;
   if (path.startsWith("/fitness")) return <FitnessPage />;
   if (path.startsWith("/gps-speedometer")) return <GpsPage />;
